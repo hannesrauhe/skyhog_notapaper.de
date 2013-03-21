@@ -119,16 +119,36 @@ There is no bar for the GPU-dictionary version because there was an error in the
 <b>Interpretation of the results</b>
 <br />
 The startwith operation is much faster on the dictionary encoded column because it benefits from the sorted dictionary.
-There is no advantage for the substring operation and 
-When executing the operation on the GPU the transfer dominates the execution time, even if we transfer only the dictionary-encoded values. 
-However, it is a surprise that the plain execution is significantly faster on the GPU than on the multi-core CPU.
+The dictionary encoding is even disadvantageous for the substr operation, because a full scan is necessary in the dictionary first to get the matching references and then another lookup is necessary to find the references in the array.
+If there were no matching values in the column the operation would most likely be a bit faster on the dictionary encoded column. 
+The same counts for small dictionaries.
+<br />
+The startswith-operation is clearly memory bound. We can only achieve a speedup of around 4 with 16 cores. 
+There is a significant difference between the std and the custom implementation, because the contiguous memory layout allows much faster access while the usage of <i>std::string</i> forces the algorithm to dereference another pointer.
+The substring-operation is obviously CPU bound. We achieve a speedup of 20 with 16 cores resp. 32 threads. 
+The Horspool algorithms reads a string more than once. Therefore the cores operate on values in the cache and are not limited by the memory bus.
+<br />
+When executing the operations on the GPU the transfer dominates the execution time, even if we transfer only the dictionary-encoded values. 
+However, it is a surprise that the plain execution of the startswith-operation is significantly faster on the GPU than on the multi-core CPU.
 We think this is because, although the code doesn't show it, the actual execution fits well to the SIMD processing model.
 All threads compare the first character with the constant value at the same time and then in most cases the loop continues to the next iteration because there was no hit.
-This is not the case for the substring operation, which is indeed slower on the GPU than on the CPU. The reason for this might be the high branch divergence when executing the Horspool algorithm 
+This is not the case for the substring operation, which is indeed slower on the GPU than on the CPU. 
+The reason for this might be the high branch divergence when executing the Horspool algorithm.
+Another problem is that we cannot use the faster Shared Memory for our implementation because it is shared between the threads of one workgroup and every thread needs a different amount because of the variable length values. 
+Dealing with this problem would induce more overhead for the memory management and more branch divergence because every thread would execute different code depending on where the string is stored.
+Maybe just comparing all values in parallel is not the right approach, but a massively parallel SIMD-like algorithm for searches in short strings may not be possible.
+Let me know, if you know more about this.
+</p>
+<p>
+	<h3>Conclusion</h3>
+	Using the GPU for string-operations does not seem to be beneficial. The biggest problem is the data transfer which dominates the execution time. 
+	Another practical problem is that even the most commonly used functions have to be reimplemented for the GPU.
+	Dictionary encoding might be a solution for this problem, because we can do the actual string operations on the CPU and leave the rest to the CPU.
+	However, in many cases the operations on the dictionary dominate the execution time so there is no benefit in using the GPU.
  </p>
  
  <p>
- I'll upload the source code soon.
+ I'll upload the source code and the raw numbers soon.
  </p>
  <div class="references">
   [1] https://github.com/FooBarWidget/boyer-moore-horspool<br />
