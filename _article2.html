@@ -1,0 +1,138 @@
+<article>
+  <h3>Processing strings on the GPU</h3>
+  <div class="short">
+  In contrast to most other fields, where GPU are used, database management systems usually require string processing. I did some microbenchmarks to find out if it is possible to do this on the GPU as well and if it is beneficial.
+  </div>
+  <div class="tags">
+  strings varlen
+  </div>
+  <div class="date">
+  2013-03-20
+  </div>
+  <p>
+  
+The GPU is well suited to handle data types such as numbers with the same size.
+A good indicator for the fact that GPUs are not well at handling variable length strings is, that no official library is able to handle them.
+Even very simple string-operations, such as comparisons, are not available and have to be implemented by the application developer.
+
+<br />
+There are two main problems when dealing with strings:
+First, Strings - even with constant length - are data intensive and require only a very small amount of processing in general, e.g., a string comparison often requires just the comparison of the first character.
+The transfer to the GPU therefore often dominates the processing time.
+Second, variable length values do not fit well to the SIMD processing architecture of GPUs.
+There is always a fixed number of processing cores doing the same instruction.
+We cannot dynamically assign work to each of them, but variable length values require this.
+<br />
+A popular suggestion to cope with the problem is dictionary encoding. 
+If there is only a small number of distinct values, this limits the amount of actual string operations to a minimum.
+In case of a lot of unique values, we can process the dictionary itself on the the CPU and the references on the GPU.
+This leads to the situation, that either the GPU and the CPU have to communicate every time a string operation is needed or that the CPU has to pre-process everything, which can easily lead to unnecessary overhead.
+E.g., an equi-join on a string column would mean, that the CPU has to prepare a mapping for the string references in the joined columns, but in most cases the GPU may only need parts of these mappings.
+Therefore dictionary encoding with large dictionaries only makes sense if it is the minor part of the workload, otherwise the GPU will barely be used.
+</p>
+
+<p>
+<h3>Experiment</h3>
+<b>Implementation</b><br />
+To evaluate these thoughts we compared CPU/GPU performance of two operations which are often used in databases with columns containing strings.
+The first operation checks how many strings in one column of a column-wise stored table start with a given string (<i>startswith</i>-operation).
+The second operation searches all values for a sub-string (<i>substring</i>-operation) and returns teh number of values that match.
+<br /><br />
+For both operations we implemented three different versions:<br />
+<i>std</i>: In the first approach we used the containers of the C++ standard library. The column is a simple vector of strings. Since there is no library available which handles strings on the GPU, this was only tested on the CPU. It is our baseline. (It doesn't matter for our experiments, but this is the structure which handles updates best.)
+<br />
+<i>Custom</i>: Our hand-written implementation uses one block of memory to store all strings contigously. An array holds the information on where one value starts and how long it is (of course one of these variables would be enough, but for the GPU this is gives a few advantages).
+The core of the substring operation is the Boyer-Moore-Horspool algorithm. 
+We tried different implementations and used the one we found <a href="https://github.com/FooBarWidget/boyer-moore-horspool">here</a> [1]. 
+As a side note: we had to implement basic functions such as <i>strstr()</i> on our own and used them for both implementations. Interestingly our <i>strstr()</i> is around 20% faster, because it does only check for equality not for greater/lesser.
+<br/>
+<i>Dictionary</i>: We used our Custom structure as dictionary and a simple array holds the references to the dictionary. We implemented it as read-only structure, i.e., the strings in the dictionary are sorted. Column stores, such as the one in HANA, do this in their main storage as well. To avoid sorting when new values are inserted updates are buffered in another structure until the system decides to recreate the main storage. 
+C-Store[2] handles this similarly: they differentiate between Read-optimized Store and Writeable Store [3].
+<br /><br />
+These three implementations of the two operations are now executed with three different approaches:<br />
+<i>Single</i>: The sequential CPU implementation is straight-forward. With one thread we just compare every value with the given string in a loop.<br />
+<i>Parallel</i>: The parallel implementation uses OpenMP [4] to execute the loop on all available cores, which requires one additional line of code and one additional compiler switch... I love it.<br />
+<i>GPU</i>:
+Although the basic execution logic on the GPU is the same - a high number of values is compared to the search string in parallel, the implementation requires more effort.
+</p>
+<div>
+The process can be split up into 6 different steps:
+<ol>
+<li>allocate memory on the GPU
+</li>
+<li>transfer the data to the GPU
+</li>
+<li>execute the kernel
+</li>
+<li>transfer the result back to the CPU
+</li>
+<li>process the result on the CPU
+</li>
+<li>free the memory on the GPU
+</li>
+</ol>
+</div>
+<p>
+Step 5 is necessary, since the kernel does not give the final result - the number of matching values - but a bitvector with a bit set on every matching position.
+With a second kernel call we could add these numbers up to the final result, but we do this on the CPU instead.
+This two-phase approach is needed, because we cannot synchronize all threads of the GPU efficiently within one kernel.
+A more detailed description can be found in the reduction sample of the CUDA SDK [5].
+</p>
+
+<p>
+<b>Hardware</b><br />
+Our test machine is a Linux workstation equipped with two Xeon E5-2690 hexa core CPUs and a NVidia Tesla K10 with 8 GB of RAM.
+The GPUs are connected via PCI-Express version 3 with a peak bandwidth of 11.2 GB/s.
+We measured the run-time for the operation with different data structures executed with one thread on the CPU (<i>Single</i>), 32 threads on the CPU (<i>Multi</i>) and on the GPU.
+</p>
+<p>
+<b>Test data</b><br />
+As data set we used the <i>L_COMMENT</i> column of the TPC-H benchmark (SF 10), which consists of 60 mio strings with 10 to 43 characters.
+The column consists of approx. 70% distinct values.
+For our experiment we searched for the term "the". 935,863 entries start with this term and it's a substring of 2,068,744 values. 
+</p>
+<p>
+<b>Results startswith</b>
+<br />
+The one-threaded std implementation of the substring implementation takes around 600 ms to execute.
+With the help of OpenMP we could achieve a speedup of about 4 by executing the loop in parallel.
+The Custom implementation runs approx. in half the time for the sequential as well as the parallel implementation.
+The third bar shows that 90% of the time is needed to allocate/free memory (named <i>GPU overhead</i>) and transfer the data to the GPU, less than a milli-second is spent on the CPU to process the interim result.
+Because of the high transfer costs the GPU implementation needs three times as long as the parallel CPU implementation, although the kernel is four times faster.
+We added a third group (<i>Custom w/o transfer</i>), where the column is already stored in the GPUs memory. As expected, the overhead for allocating and transferring the result is negligible.
+The third group shows the same operation, when we keep the data on the CPU and on the GPU.
+The allocation of memory for the interim results and its transfer take approx. one ms and are therefore negligible. 
+The operation on the dictionary encoded column are two simple binary searches on the dictionary to find the range of values that match the term we search for.
+99% of the time is spent to find the matching values in the array.<br />
+<object data="fig_startswith.svg" type="image/svg+xml" ></object>
+</p>
+<p>
+<b>Results substring</b>
+<br />
+The single-threaded execution of the second operation takes between 2 and 3 seconds for the three different implementation. 
+The focus of this experiment is the comparison of multi-core CPU and GPU, therefore I zoomed the plot to the interesting results.
+The plain execution time for all variants with CPU and GPU lie between 110 and 150 ms. However, the necessary transfer to the GPU adds 200 ms again.
+There is no bar for the GPU-dictionary version because there was an error in the result. There was no surprise in the "wrong" version, maybe I'll fix this some time...
+<object data="fig_substr.svg" type="image/svg+xml" ></object>
+</p>
+<p>
+<b>Interpretation of the results</b>
+The startwith operation is much faster on the dictionary encoded column because it benefits from the sorted dictionary. 
+When executing the operation on the GPU the transfer dominates the execution time, even if we transfer only the dictionary-encoded values. 
+However, it is a surprise that the plain execution is significantly faster on the GPU than on the multi-core CPU.
+We think this is because, although the code doesn't show it, the actual execution fits well to the SIMD processing model.
+All threads compare the first character with the constant value at the same time and then in most cases the loop continues to the next iteration because there was no hit.
+This is not the case for the substring operation, which is indeed slower on the GPU than on the CPU. The reason for this might be the high branch divergence when executing the Horspool algorithm 
+ </p>
+ 
+ <p>
+ I'll upload the source code soon.
+ </p>
+ <div class="references">
+  [1] https://github.com/FooBarWidget/boyer-moore-horspool<br />
+  [2] <a href="db.csail.mit.edu/projects/cstore/">C-Store Homepage</a><br />
+  [3] Stonebraker et al: "C-Store: A Column-oriented DBMS" (2005)<br />
+  [4] http://openmp.org/<br />
+  [5] https://developer.nvidia.com/cuda-downloads<br />
+ </div>
+</article>
