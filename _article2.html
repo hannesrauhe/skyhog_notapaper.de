@@ -104,7 +104,7 @@ The third group shows the same operation, when we keep the data on the CPU and o
 The allocation of memory for the interim results and its transfer take approx. one ms and are therefore negligible. 
 The operation on the dictionary encoded column are two simple binary searches on the dictionary to find the range of values that match the term we search for.
 99% of the time is spent to find the matching values in the array.<br />
-<object data="fig_startswith.svg" type="image/svg+xml" ></object>
+<object data="fig_startswith.svg" type="image/svg+xml" >Figure for startswith</object>
 </p>
 <p>
 <b>Results substring</b>
@@ -112,12 +112,14 @@ The operation on the dictionary encoded column are two simple binary searches on
 The single-threaded execution of the second operation takes between 2 and 3 seconds for the three different implementation. 
 The focus of this experiment is the comparison of multi-core CPU and GPU, therefore I zoomed the plot to the interesting results.
 The plain execution time for all variants with CPU and GPU lie between 110 and 150 ms. However, the necessary transfer to the GPU adds 200 ms again.
-There is no bar for the GPU-dictionary version because there was an error in the result. There was no surprise in the "wrong" version, maybe I'll fix this some time...
-<object data="fig_substr.svg" type="image/svg+xml" ></object>
+There is no bar for the GPU-dictionary version because there was an error in the result. There was no surprise in the "wrong" version, maybe I'll fix this some time...<br />
+<object data="fig_substr.svg" type="image/svg+xml" >Figure for substr</object>
 </p>
 <p>
 <b>Interpretation of the results</b>
-The startwith operation is much faster on the dictionary encoded column because it benefits from the sorted dictionary. 
+<br />
+The startwith operation is much faster on the dictionary encoded column because it benefits from the sorted dictionary.
+There is no advantage for the substring operation and 
 When executing the operation on the GPU the transfer dominates the execution time, even if we transfer only the dictionary-encoded values. 
 However, it is a surprise that the plain execution is significantly faster on the GPU than on the multi-core CPU.
 We think this is because, although the code doesn't show it, the actual execution fits well to the SIMD processing model.
