@@ -1,7 +1,8 @@
 <article>
-  <h3>Processing strings on the GPU</h3>
+  <h2>Processing strings on the GPU</h2>
   <div class="short">
-  In contrast to most other fields, where GPU are used, database management systems usually require string processing. I did some microbenchmarks to find out if it is possible to do this on the GPU as well and if it is beneficial.
+  <h3>Abstract</h3>
+  In contrast to most other fields, where GPU are used, database management systems usually require string processing. Our experiments show that data transfer is the major problem and that dictionary encoding is not a general solution as often suggested.
   </div>
   <div class="tags">
   strings varlen
@@ -10,7 +11,7 @@
   2013-03-20
   </div>
   <p>
-  
+  <h3>Introduction</h3>
 The GPU is well suited to handle data types such as numbers with the same size.
 A good indicator for the fact that GPUs are not well at handling variable length strings is, that no official library is able to handle them.
 Even very simple string-operations, such as comparisons, are not available and have to be implemented by the application developer.
