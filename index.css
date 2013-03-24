@@ -2,4 +2,4 @@
 article { border: 1px dashed grey; width: 80%; padding:5px; padding-top:0px; margin-bottom:5px;text-align: justify;}
 aside {float:right; width: 20%;}
 nav ul {list-style: none;}
-nav ul li [float:left;}
+nav a {text-decoration: none;}
