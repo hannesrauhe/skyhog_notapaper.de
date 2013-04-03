@@ -1,38 +1,39 @@
 <article>
-  <h2>Related work: GPUs for Processing Analytical Workload</h2>
-  <div class="short">
-  <h3>Abstract</h3>
-  I discuss the PhD Workshop paper 
+     <h2>Related work: GPUs for Processing Analytical Workload</h2>
+
+    <div class="short">
+         <h3>Abstract</h3>
+I discuss the PhD Workshop paper
 <a href="http://sacan.biomed.drexel.edu/vldb2012/program/?volno=vol5no13&pid=1004&downloadpaper=1">
 "An In-GPU-Memory Column-Oriented Database for Processing Analytical Workloads" by Pedram Ghodsnia.</a>
-  </div>
-  <div class="tags">
-  related work
-  </div>
-  <div class="date">
-  2013-04-03
-  </div>
-  <p>
-  The paper gives a nice and short overview over the current research related to GPU-assisted query processing.
-(I had the impression that everything related to MapReduce was just mentioned because it fills a lot of space)
-The author comes to the only possible conclusion after reading the few papers published: GPUs are fast at query execution, but the data transfer might be a problem.
-Therefore he proposes a general DBMS, that stores everything in the GPU's memory. He wants to port MonetDB [2], because Column Stores are better suited for GPUs (I agree). For a first shot, this system shall be read-only.
-  </p>
-<p>
-First I like to say, that the data transfer problem is always an understatement in recent research. 
-I usually find, that the transfer takes longer than the actual processing on the GPU or CPU. 
-The reasons are, that we often transfer a lot of data that is not processed (rows are filtered because one column does not fulfill the condition --> the other columns of this row are untouched), 
-that large result sets have to be transferred back,
-and last but not least most of the data is processed faster than it is copied. 
-A CPU evaluates a simple WHERE condition faster than the PCIe bus's bandwith.
-Hence I agree with the author, that the only solution is, to store the data permanently on the graphics card.<br />
-However, there is a problem with this proposal. 
-Although the amount of memory available on the GPU rises, it is much more expensive than ordinary RAM.
-Nobody said, that GPUs are able to execute every possible statement - let alone faster or more efficient than the CPU. 
-The author himself mentions that there are numbers, that suggest that CPUs are sometimes
-</p>
-  <div class="references">
-[1] http://sacan.biomed.drexel.edu/vldb2012/program/?volno=vol5no13&pid=1004&downloadpaper=1
-[2] MonetDB
-</div>
+
+    </div>
+    <div class="tags">related work</div>
+    <div class="date">2013-04-03</div>
+    <p>The paper gives a nice and short overview over the current research related
+        to GPU-assisted query processing. (I had the impression that everything
+        related to MapReduce was just mentioned because it fills a lot of space)
+        The author comes to the only possible conclusion after reading the few
+        papers published: GPUs are fast at query execution, but the data transfer
+        might be a problem. Therefore he proposes a general DBMS, that stores everything
+        in the GPU's memory. He wants to port MonetDB [2], because Column Stores
+        are better suited for GPUs (I agree). For a first shot, this system shall
+        be read-only.</p>
+    <p>First I like to say, that the data transfer problem is always an understatement
+        in recent research. I usually find, that the transfer takes longer than
+        the actual processing on the GPU or CPU. The reasons are, that we often
+        transfer a lot of data that is not processed (rows are filtered because
+        one column does not fulfill the condition --> the other columns of this
+        row are untouched), that large result sets have to be transferred back,
+        and last but not least most of the data is processed faster than it is
+        copied. A CPU evaluates a simple WHERE condition faster than the PCIe bus's
+        bandwith. Hence I agree with the author, that the only solution is, to
+        store the data permanently on the graphics card.
+        <br />However, there is a problem with this proposal. Although the amount of
+        memory available on the GPU rises, it is much more expensive than ordinary
+        RAM. Nobody said, that GPUs are able to execute every possible statement
+        - let alone faster or more efficient than the CPU. The author himself mentions
+        that there are numbers, that suggest that CPUs are sometimes</p>
+    <div class="references">[1] http://sacan.biomed.drexel.edu/vldb2012/program/?volno=vol5no13&pid=1004&downloadpaper=1
+        [2] MonetDB</div>
 </article>
