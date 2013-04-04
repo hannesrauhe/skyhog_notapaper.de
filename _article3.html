@@ -20,37 +20,45 @@ I discuss the PhD Workshop paper
         are better suited for GPUs (I agree). For a first shot, this system shall
         be read-only.</p>
     <p>First I like to say, that the data transfer problem is always an understatement
-        in recent research. I usually find, that the transfer takes longer than
-        the actual processing on the GPU or CPU. The reasons are, that we often
-        transfer a lot of data that is not processed (rows are filtered because
-        one column does not fulfill the condition --> the other columns of this
-        row are untouched), that large result sets have to be transferred back,
-        and last but not least most of the data is processed faster than it is
-        copied. A CPU evaluates a simple WHERE condition faster than the PCIe bus's
-        bandwith. Hence I agree with the author, that the only solution is to store
-        the data permanently on the graphics card.
-        <br />However, there is a problem with this proposal. Although the amount of
+        in recent research. In my experiments transfer usually takes longer than
+        the actual processing on the GPU or CPU. The reasons are:
+        <ul>
+            <li>a large amount of data is transferred but not processed (rows are filtered
+                because one column does not fulfill the condition; the other columns of
+                this row are untouched)</li>
+            <li>often large result sets have to be transferred back</li>
+            <li>in query execution data is in many cases processed faster than it is copied.
+                A CPU evaluates a simple WHERE condition faster than the PCIe bus's bandwidth.</li>
+        </ul>Hence I agree with the author, that the only solution is to store the
+        data permanently on the graphics card.</p>
+    <p>However, there is a problem with this proposal. Although the amount of
         memory available on the GPU rises, it is much more expensive than ordinary
-        RAM. Enlarging the capacity by using more than one card again requires
-        transfer.
-        <br />But in my opinion a much bigger problem is the computing ability. Nobody
+        RAM. Also, most applications for the GPU do not need very large amounts
+        of memory. Therefore I don't think that the capacity will grow as fast
+        as main memory. Enlarging the capacity by using more than one card is not
+        a real solution because it again requires transfer, which we want to avoid.</p>
+    <p>But in my opinion a much bigger problem is the computing ability. Nobody
         said, that GPUs are able to execute every possible SQL statement - let
         alone faster or more efficient than the CPU. Some operators were implemented
-        on the GPU, but never compared to a state-of-the-art DBMS. It lokks as
+        on the GPU, but never compared to a state-of-the-art DBMS. It looks as
         if it has never been tried, but I guess nobody was able to build a successful
         prototype. Researchers seldomly publish negativ results because it is hard
         to prove that something can't be done (better). But the absence of convincing
         results after a decade of research indicates that GPUs aren't perfect for
-        the job.
-        <br />After all, GPUs are only Coprocessors that assist the CPU. In my opinion,
+        the job.</p>
+    <p>After all, GPUs are only Coprocessors that assist the CPU. In my opinion,
         we should carfully pick parts of the DBMS that can profit from the GPUs
         architecture. Preferably number crunching processes, e.g., in the field
-        of query optimization. Heimel and Markl suggest selectivity estimation
-        and kernel density estimation [3].</p>
+        of query optimization. Heimel and Markl for instance suggest selectivity
+        estimation and kernel density estimation [3]. I did some work on exectuing
+        certain types of queries on the GPU, which hopefully will be published
+        soon. However, I'm sure, that a graphics card cannot be an efficient and
+        general (SQL-)query processor today or in the near future.</p>
     <div class="references">[1] Pedram Ghodsnia, <a href="http://sacan.biomed.drexel.edu/vldb2012/program/?volno=vol5no13&pid=1004&downloadpaper=1">
 "An In-GPU-Memory Column-Oriented Database for Processing Analytical Workloads"</a>,
         PhD Workshop VLDB 2012
         <br />[2]<a href="http://www.monetdb.org/Home">MonetDB</a>
+
         <br />[3] Heimel, Max and Markl, Volker, "A First Step Towards GPU-assisted
         Query Optimization", ADMS 2012</div>
 </article>
