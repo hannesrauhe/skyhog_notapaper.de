@@ -53,7 +53,7 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
         <br />Since we want to use streaming, a bit more effort is necessary for GPU
         execution. The <span>4-way-concurrency pattern</span> described <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">here</a> is
         exactely what we need.
-        <br />At first we copy the map to the GPU. After that processing and streaming
+        At first we copy the map to the GPU. After that processing and streaming
         of the reference vector overlaps. Streaming needs pinned memory, so we
         allocate three pinned buffers in the CPU's RAM and in the GPU's RAM (size
         is 128kb - experiment with the size if you want). Now we do four things
