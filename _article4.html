@@ -34,12 +34,13 @@
         can be directly accessed in the map:</p>
     <p>
 <b>Implementation</b>
+
         <br />
 <pre>
 <code>
 //src and dest can point to the same address
 void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
-    for(uint idx=0;idx<size;++idx) {
+    for(uint idx=0;idx&lt;size;++idx) {
         dest[idx] = map[src[idx]];
     }
 }
