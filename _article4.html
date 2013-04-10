@@ -37,8 +37,25 @@ Streaming needs pinned memory, so we allocate three pinned buffers in the CPU's 
 <li>the GPU processes the references in the second buffer</li> 
 <li>the GPU's second copy engine copies the already processed elements from the third buffer on the GPU to the third buffer in main memory</li>
 </ul>
-I allocated a big third buffer on the CPU to store everything there, otherwise the data has to be copied on the CPU in parallel to the target memory in the process. GPU and PCIe bus provide enough redundant elements to do this all at once without loosing performance
+I allocated a big third buffer on the CPU to store everything there, otherwise the data has to be copied by the CPU in parallel to the target memory as a fifth step. GPU and PCIe bus provide enough redundant elements to do this all at once without loosing performance.
 </p>
+<p>
+     <b>
+      Hardware
+     </b>
+     <br>
+     Our test machine is a Linux workstation equipped with two Xeon E5-2690 hexa core CPUs and a NVidia Tesla K10 with 8 GB of RAM.
+The GPUs are connected via PCI-Express version 3 with a peak bandwidth of 11.2 GB/s.
+We measured the run-time for the operation with different data structures executed with one thread on the CPU (
+     <i>
+      Single
+     </i>
+     ), 32 threads on the CPU (
+     <i>
+      Multi
+     </i>
+     ) and on the GPU.
+    </p>
     <div class="references"></div>
 []http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf<br />
     <div class="additional"></div>
