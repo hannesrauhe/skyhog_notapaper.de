@@ -2,17 +2,40 @@
     
 <h2>Get the feeling for data-intensive problems</h2>
 
-    <div class="short">Before you consider porting an algorithm to the GPU you should check its characteristics. You may have often heard that it should be calculation/computation-intensive. In this post I try to describe, what that means and be more specific. On the example of a simple re-encoding algorithm I show that this is not the whole truth. Data intensive algorithms can benefit from the high bandwidth of a GPU's RAM, but only if they fulfil certain conditions: they should support streaming and work in a massively parallel fashion.</div>
+    <div class="short">Before you consider porting an algorithm to the GPU you should check its
+        characteristics. You may have often heard that it should be calculation/computation-intensive.
+        In this post I try to describe, what that means and be more specific. On
+        the example of a simple re-encoding algorithm I show that this is not the
+        whole truth. Data intensive algorithms can benefit from the high bandwidth
+        of a GPU's RAM, but only if they fulfil certain conditions: they should
+        support streaming and work in a massively parallel fashion.</div>
     <div class="tags">data-intensive streaming</div>
     <div class="date">2013-04-10</div>
+    
 <h3>Introduction</h3>
-    <p>
-*data crunching vs. number crunching - iterations
-*streamable - data processed part for part - parts of the result are there early</p>
+
+    <p>*data crunching vs. number crunching - iterations *streamable - data processed
+        part for part - parts of the result are there early</p>
+    
 <h3>Experiment</h3>
-<p>
-We take a look at a very simple algorithm that is used in most column stores I know, e.g., SAP HANA. Every column is dictionary-encoded, i.e., every distinct value of one column is stored in a sorted dictionary and the values in the column are references to the entries in the dictionary. Updates to the column are usually buffered and at some point integrated. This integration process (in HANA this is called Delta Merge) rebuilds the dictionary in a first step and updates the references in a second. We concentrate on this second step. Usually in the first step a mapping from the old reference to the new reference is created. Since references are just integers, the mapping is an array, where the new reference is stored at the position of the old one. 
-Therefore, the algorithm just goes through every vector of references, and replaces each with the value that can be directly accessed in the map: 
+
+    <p>We take a look at a very simple algorithm that is used in most column
+        stores I know, e.g., SAP HANA. Every column is dictionary-encoded, i.e.,
+        every distinct value of one column is stored in a sorted dictionary and
+        the values in the column are references to the entries in the dictionary.
+        Updates to the column are usually buffered and at some point integrated.
+        This integration process (in HANA this is called Delta Merge) rebuilds
+        the dictionary in a first step and updates the references in a second.
+        We concentrate on this second step. Usually in the first step a mapping
+        from the old reference to the new reference is created. Since references
+        are just integers, the mapping is an array, where the new reference is
+        stored at the position of the old one. Therefore, the algorithm just goes
+        through every vector of references, and replaces each with the value that
+        can be directly accessed in the map:</p>
+    <p>
+<b>Implementation</b>
+        <br />
+<pre>
 <code>
 //src and dest can point to the same address
 void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
@@ -21,44 +44,43 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
     }
 }
 </code>
+</pre>
 
-<br />
-</p>
-<b>Implementation</b><br />
-<p>
-The sequential CPU implementation is the one above. The second approach uses OpenMP to execute the loop in parallel.<br />
-Since we want to use streaming, a bit more effort is necessary for GPU execution. The <span>4-way-concurrency pattern</span> described <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">here</> is exactely what we need.<br />
-At first we copy the map to the GPU. After that processing and streaming of the reference vector overlaps.
-Streaming needs pinned memory, so we allocate three pinned buffers in the CPU's RAM and in the GPU's RAM (size is 128kb - experiment with the size if you want). Now we do four things at once:
-<br />
-<ul>
-<li>the CPU copies references to the first buffer</li>
-<li>the GPU's copy engine copies references from a second buffer to the GPU's memory (first buffer there)</li>
-<li>the GPU processes the references in the second buffer</li> 
-<li>the GPU's second copy engine copies the already processed elements from the third buffer on the GPU to the third buffer in main memory</li>
-</ul>
-I allocated a big third buffer on the CPU to store everything there, otherwise the data has to be copied by the CPU in parallel to the target memory as a fifth step. GPU and PCIe bus provide enough redundant elements to do this all at once without loosing performance.
-</p>
-<p>
-     <b>
+        <br />The sequential CPU implementation is the one above. The second approach
+        uses OpenMP to execute the loop in parallel.
+        <br />Since we want to use streaming, a bit more effort is necessary for GPU
+        execution. The <span>4-way-concurrency pattern</span> described <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">here</a> is
+        exactely what we need.
+        <br />At first we copy the map to the GPU. After that processing and streaming
+        of the reference vector overlaps. Streaming needs pinned memory, so we
+        allocate three pinned buffers in the CPU's RAM and in the GPU's RAM (size
+        is 128kb - experiment with the size if you want). Now we do four things
+        at once:</p>
+    <ul>
+        <li>the CPU copies references to the first buffer</li>
+        <li>the GPU's copy engine copies references from a second buffer to the GPU's
+            memory (first buffer there)</li>
+        <li>the GPU processes the references in the second buffer</li>
+        <li>the GPU's second copy engine copies the already processed elements from
+            the third buffer on the GPU to the third buffer in main memory</li>
+    </ul>
+    <p>I allocated a big third buffer on the CPU to store everything there, otherwise
+        the data has to be copied by the CPU in parallel to the target memory as
+        a fifth step. GPU and PCIe bus provide enough redundant elements to do
+        this all at once without loosing performance.</p>
+    <p> <b>
       Hardware
      </b>
-     <br>
-     Our test machine is a Linux workstation equipped with two Xeon E5-2690 hexa core CPUs and a NVidia Tesla K10 with 8 GB of RAM.
-The GPUs are connected via PCI-Express version 3 with a peak bandwidth of 11.2 GB/s.
-We measured the run-time for the operation with different data structures executed with one thread on the CPU (
-     <i>
-      Single
-     </i>
-     ), 32 threads on the CPU (
-     <i>
-      Multi
-     </i>
-     ) and on the GPU.
-    </p>
 
-<object data="art4_fig_recoding.svg" type="image/svg+xml" >Figure for recoding</object>
-    <div class="references"></div>
-[]http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf<br />
-    <div class="additional"></div>
+        <br>Our test machine is a Linux workstation equipped with two Xeon E5-2690
+        hexa core CPUs and a NVidia Tesla K10 with 8 GB of RAM. The GPUs are connected
+        via PCI-Express version 3 with a peak bandwidth of 11.2 GB/s. We measured
+        the run-time for the operation with different data structures executed
+        with one thread on the CPU, 32 threads on the CPU and on the GPU.</p>
+    <object
+    data="art4_fig_recoding.svg" type="image/svg+xml">Figure for recoding</object>
+        <div class="references"></div>[]http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf
+        <br
+        />
+        <div class="additional"></div>
 </article>
