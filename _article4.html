@@ -32,10 +32,6 @@
         stored at the position of the old one. Therefore, the algorithm just goes
         through every vector of references, and replaces each with the value that
         can be directly accessed in the map:</p>
-    <p>
-<b>Implementation</b>
-
-        <br />
 <pre>
 <code>
 //src and dest can point to the same address
@@ -46,6 +42,11 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
 }
 </code>
 </pre>
+
+    <p>
+<b>Implementation</b>
+
+        <br />
 
         <br />The sequential CPU implementation is the one above. The second approach
         uses OpenMP to execute the loop in parallel.
