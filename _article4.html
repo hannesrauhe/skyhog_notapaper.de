@@ -36,7 +36,7 @@
 <code>
 //src and dest can point to the same address
 void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
-    for(uint idx=0;idx&lt;size;++idx) {
+    for(uint idx=0;idx<size;++idx) {
         dest[idx] = map[src[idx]];
     }
 }
@@ -47,17 +47,15 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
 <b>Implementation</b>
 
         <br />
-
         <br />The sequential CPU implementation is the one above. The second approach
         uses OpenMP to execute the loop in parallel.
         <br />Since we want to use streaming, a bit more effort is necessary for GPU
         execution. The <span>4-way-concurrency pattern</span> described <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">here</a> is
-        exactely what we need.
-        At first we copy the map to the GPU. After that processing and streaming
-        of the reference vector overlaps. Streaming needs pinned memory, so we
-        allocate three pinned buffers in the CPU's RAM and in the GPU's RAM (size
-        is 128kb - experiment with the size if you want). Now we do four things
-        at once:</p>
+        exactely what we need. At first we copy the map to the GPU. After that
+        processing and streaming of the reference vector overlaps. Streaming needs
+        pinned memory, so we allocate three pinned buffers in the CPU's RAM and
+        in the GPU's RAM (size is 128kb - experiment with the size if you want).
+        Now we do four things at once:</p>
     <ul>
         <li>the CPU copies references to the first buffer</li>
         <li>the GPU's copy engine copies references from a second buffer to the GPU's
@@ -84,5 +82,6 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
         <div class="references"></div>[]http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf
         <br
         />
-        <div class="additional"></div>
+        <div class="additional">The source code can be found here: <a href="https://github.com/hannesrauhe/notapaper_recode">https://github.com/hannesrauhe/notapaper_recode</a>
+        </div>
 </article>
