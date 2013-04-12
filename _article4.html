@@ -14,16 +14,20 @@
     
 <h3>Introduction</h3>
 
-    <p>Although GPUs have more computational power and a higher bandwidth, only a subset of computations can benefit from these advantages. (I'm talking about dedicated graphic cards with own memory in this post - integrated GPUs are a different topic - I've seen some nice papers on the way discussing these in a DBMS context.) 
-There are certain algorithm criteria that indicate a performance gain when using the GPU.
-<ul>
-<li>the algorithm works in parallel with little or no overhead on the CPU</li>
-<li>the algorithm works in a SIMD fashion</li>
-<li>the data processes by the algorithm fits into the GPU's memory</li>
-<li>transfer to the GPU and actual computation can overlap</li>
-<li>processing the data on the CPU takes longer than transferring it to the GPU</li>
-</ul>
-
+    <p>Although GPUs have more computational power and a higher bandwidth, only
+        a subset of computations can benefit from these advantages. (I'm talking
+        about dedicated graphic cards with own memory in this post - integrated
+        GPUs are a different topic - I've seen some nice papers on the way discussing
+        these in a DBMS context.) There are certain algorithm criteria that indicate
+        a performance gain when using the GPU.
+        <ul>
+            <li>the algorithm works in parallel with little or no overhead on the CPU</li>
+            <li>the algorithm works in a SIMD fashion</li>
+            <li>the data processes by the algorithm fits into the GPU's memory</li>
+            <li>transfer to the GPU and actual computation can overlap</li>
+            <li>processing the data on the CPU takes longer than transferring it to the
+                GPU</li>
+        </ul>
 *data crunching vs. number crunching - iterations *streamable - data processed
         part for part - parts of the result are there early</p>
     
@@ -93,5 +97,6 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
         <br
         />
         <div class="additional">The source code can be found here: <a href="https://github.com/hannesrauhe/notapaper_recode">https://github.com/hannesrauhe/notapaper_recode</a>
+
         </div>
 </article>
