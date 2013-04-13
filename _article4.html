@@ -27,7 +27,48 @@
             GPU</li>
         <li>the data processed by the algorithm fits into the GPU's memory</li>
         <li>transfer to the GPU and actual computation can overlap</li>
-    </ol>    
+    </ol>
+    <p>These five point can be categorized: to adapt your algorithm to the GPU's
+        architecture, the first two points are mandatory. The three other points
+        basically deal with the bandwidth-bottleneck of an external Coprocessor.
+        <br
+        />*data crunching vs. number crunching - iterations
+        <br />I differentiate between the first two points, because on the one hand
+        there are algorithms that are inherently sequential. Often they consist
+        of a tight loop with thousands of iterations where each iteration depends
+        on the previous one. A parallel implementation (even on the CPU) needs
+        a totally different approach. On the other hand there are algorithms where
+        a parallel implementation on the CPU is already available and looks promising.
+        Often you can just partition the workload, process it with a number of
+        different threads and merge the intermediate results in the end. If the
+        merge overhead is comparatively small, e.g., it just involves copying the
+        intermediate results to the right positions, the algorithm typically sclaes
+        well with the number of CPU cores (until it is limited by the memory bandwidth).
+        However, this type of algorithm usually does not scale well when more than
+        a hundred partitions are used, because the merge overhead grows with the
+        number of partitions. An alogrithm for the GPU needs to work with thousands
+        of threads and in a SIMD fashion. One of the aspects of SIMD is that branching
+        should be avoided. Every thread should calculate the same instruction for
+        a different memory segment. I don't want to stretch this too much at this
+        point, but remind you that there is a difference between a parallel and
+        a massively parallel algorithm.
+        <br />Point three is plain and simple but often forgotten. The only chance for
+        an algorithm where data is processed faster than it is transferred, is
+        that GPU and CPU may be able to split the work. But in all cases I can
+        think of, such an algorithm is memory bound; so transferring the data to
+        the GPU will slow down the memory access for the CPU as well. Point four
+        does not mean that data bigger than the GPUs memory cannot be processed
+        efficiently (although it may be a first sign...). But your algorithm should
+        be able to transfer a partition of the data, process it and proceed to
+        the next one. If you repeatedly need to transfer the same data back and
+        forth because the free memory is needed in between, there is a good chance
+        that there will be no benefit in using the GPU (or any other external Coprocessor).
+        If, however, the data can be processed while it is transferred (point five,
+        also called streaming), the bandwidth is the only limit. So even if the
+        CPU is just slightly slower than the PCIe bus, there is a chance that the
+        whole process is faster on the GPU. *streamable - data processed part for
+        part - parts of the result are there early</p>
+    
 <h3>Experiment</h3>
 
     <p>We take a look at a very simple algorithm that is used in most column
@@ -47,7 +88,7 @@
 <code>
 //src and dest can point to the same address
 void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
-    for(uint idx=0;idx<size;++idx) {
+    for(uint idx=0;idx&lt;size;++idx) {
         dest[idx] = map[src[idx]];
     }
 }
