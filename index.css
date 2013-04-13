@@ -3,4 +3,4 @@ article { border: 1px dashed grey; width: 80%; padding:5px; padding-top:0px; mar
 aside {float:right; width: 20%;}
 nav ul {list-style: none;}
 nav a {text-decoration: none;}
-.buttons { margin-left:10px }
+.buttons { margin-left:20px }
