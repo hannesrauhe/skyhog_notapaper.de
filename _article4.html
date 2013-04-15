@@ -147,15 +147,15 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
         256 different integers, i.e., there are 256 different entries in the column's
         dictionary. The references are uniformly distributed over the column vector.
         The blue and the red curve are the ones to compare: blue is the CPU using
-        all its cores, red is the GPU. Out of interest I added the sequential CPU
-        implementation <i>CPU (Seq)</i>. <i>GPU (t)</i> shows the througput for only
+        all its cores, red is the GPU. I also added the sequential CPU
+        implementation <i>CPU (Seq)</i> as a baseline. <i>GPU (t)</i> shows the throughput for only
         transferring without executing the kernel and <i>GPU (s)</i> is the GPU process
         without the initial transfer of the mapping array.
-        <br />Another interesting value would be the pure kernel execution time. But
+        <br /><small>Another interesting value would be the pure kernel execution time. But
         this cannot be measured correctly with the streaming approach. If you are
         interested in it, you have to copy all data to the card first and then
         execute the kernel. I expect the throughput for small arrays to be between
-        50 and 100 GB/s.
+        50 and 100 GB/s.</small>
         <br />Small arrays fit into the CPU's caches. 13 GB/s seems to be the limit
         for reading the column vector from memory and writing it back. Since every
         value is touched only once, the cache is useless for the vector (in fact,
