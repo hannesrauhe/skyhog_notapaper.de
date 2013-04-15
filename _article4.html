@@ -107,7 +107,7 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
 </pre>
 
     <p>
-<b>Implementation</b>
+<h4>Implementation</h4>
 
         <br />The sequential CPU implementation is the one above. The second approach
         uses OpenMP to execute the loop in parallel.
@@ -130,9 +130,9 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
         the data has to be copied by the CPU in parallel to the target memory as
         a fifth step. GPU and PCIe bus provide enough redundant elements to do
         this all at once without loosing performance.</p>
-    <p> <b>
+    <p> <h4>
       Hardware
-     </b>
+     </h4>
 
         <br>Our test machine is a Linux workstation equipped with two Xeon E5-2690
         hexa core CPUs and a NVidia Tesla K10 with 8 GB of RAM. The GPUs are connected
