@@ -187,16 +187,29 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
     
 <h3>Conclusion</h3>
 
-    <div class="references">[1] <a href="http://hashcat.net/oclhashcat-plus/">Hashcat - brute-force cracking of passwords</a>
+    <p>Data intensive algorithms can benefit from the high bandwidth on the GPU
+        if they are streamable and the caches on the CPU get to small to hold data
+        that is periodically needed. In addition our streaming algorithm can be
+        executed in parallel without overhead. However, this example is certainly
+        artificial. Scenerios, where dictionaries contain more than 20,000,000
+        entries and these are uniformely distirbuted are not found often. Also,
+        References are usually bit-packed and require more computation and less
+        transfer [4]. It is hard to predict the effect on our comparison, because
+        our CPU algorithm is also memory bound and will therefore benefit from
+        the compression as well.
+        <div class="references">[1] <a href="http://hashcat.net/oclhashcat-plus/">Hashcat - brute-force cracking of passwords</a>
 
-        <br
-        />[2] <a href="http://www.heise.de/ct/artikel/Die-Passwortknacker-1779840.html">German: C't Artikel ueber das Passwort-knacken als Sport</a>
+            <br
+            />[2] <a href="http://www.heise.de/ct/artikel/Die-Passwortknacker-1779840.html">German: C't Artikel ueber das Passwort-knacken als Sport</a>
 
-        <br
-        />[3] <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">Slides by NVidia -Stream and Concurrency Webinar</a>
+            <br
+            />[3] <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">Slides by NVidia -Stream and Concurrency Webinar</a>
 
-    </div>
-    <div class="additional">The source code can be found here: <a href="https://github.com/hannesrauhe/notapaper_recode">https://github.com/hannesrauhe/notapaper_recode</a>
+            <br
+            />[4] <a href="http://www.vldb.org/pvldb/2/vldb09-327.pdf">Thomas Wilhalm et al: SIMD-Scan: Ultra Fast in-Memory Table Scan using onChip Vector Processing Units, VLDB 2009</a>
 
-    </div>
+        </div>
+        <div class="additional">The source code can be found here: <a href="https://github.com/hannesrauhe/notapaper_recode">https://github.com/hannesrauhe/notapaper_recode</a>
+
+        </div>
 </article>
