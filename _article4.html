@@ -99,7 +99,7 @@
 <code>
 //src and dest can point to the same address
 void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
-    for(uint idx=0;idx&lt;size;++idx) {
+    for(uint idx=0;idx<size;++idx) {
         dest[idx] = map[src[idx]];
     }
 }
@@ -141,7 +141,7 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
     
 <h4>Results</h4>
 
-    <object data="art4_fig_recoding.svg" type="image/svg+xml">Figure for recoding</object>
+    <object data="files/figures/art4_fig_recoding.svg" type="image/svg+xml">Figure for recoding</object>
     <p>In the figure above you can see the throughput for a vector with 4 GB
         of integers depending on the size of the mapping array. An 1 kb array holds
         256 different integers, i.e., there are 256 different entries in the column's
