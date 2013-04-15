@@ -109,8 +109,7 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
     
 <h4>Implementation</h4>
 
-    <p>
-        <br />The sequential CPU implementation is the one above. The second approach
+    <p>The sequential CPU implementation is the one above. The second approach
         uses OpenMP to execute the loop in parallel.
         <br />Since we want to use streaming, a bit more effort is necessary for GPU
         execution. The <span>4-way-concurrency pattern</span> described <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">here</a> is
@@ -143,6 +142,48 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
 <h4>Results</h4>
 
     <object data="art4_fig_recoding.svg" type="image/svg+xml">Figure for recoding</object>
+    <p>In the figure above you can see the throughput for a vector with 4 GB
+        of integers depending on the size of the mapping array. An 1 kb array holds
+        256 different integers, i.e., there are 256 different entries in the column's
+        dictionary. The references are uniformly distributed over the column vector.
+        The blue and the red curve are the ones to compare: blue is the CPU using
+        all its cores, red is the GPU. Out of interest I added the sequential CPU
+        implementation <i>CPU (Seq)</i>. <i>GPU (t)</i> shows the througput for only
+        transferring without executing the kernel and <i>GPU (s)</i> is the GPU process
+        without the initial transfer of the mapping array.
+        <br />Another interesting value would be the pure kernel execution time. But
+        this cannot be measured correctly with the streaming approach. If you are
+        interested in it, you have to copy all data to the card first and then
+        execute the kernel. I expect the throughput for small arrays to be between
+        50 and 100 GB/s.
+        <br />Small arrays fit into the CPU's caches. 13 GB/s seems to be the limit
+        for reading the column vector from memory and writing it back. Since every
+        value is touched only once, the cache is useless for the vector (in fact,
+        for a good implementation you should use an instruction to ignore the caches
+        for reading and writing the vector...). The bigger the array gets, the
+        more access to slower caches (L2 and L3) is needed. At 8 MB the array does
+        not fit into the L3 cache anymore, and a third random memory access is
+        needed. At more than 128 MB the cache is useless; because of the uniform
+        distribution every access to the mapping array is a cache miss. In contrast
+        to the sequential reading and writing of the column vector the random access
+        is much slower. The throughput is constant at 1 GB/s, even for bigger arrays.
+        <br
+        />The GPU's streaming throughput is around 7 GB/s. Until 256 MB it does
+        not matter wether the kernel is executed or not because the exectuion is
+        faster than the transfer process. Between 256 MB and 4 GB the throughput
+        decreases because the transfer of the mapping array in the beginning of
+        the process takes a significant amount of time. The <i>GPU (s)</i> curve
+        shows that the kernel execution is as fast as with a smaller array.
+        <br
+        />There are three things, I cannot explain:
+        <ul>
+            <li>I would have expected a higher througput than 7 GB/s. The PCIe bus is
+                able to handle around 15 GB in both directions at the same time.</li>
+            <li>I don't know, why GPU(t) is fluctuating between 5 and 7 GB/s for small
+                array sizes. Streaming should be constant...</li>
+            <li>The streaming throughput GPU (s) on the GPU seems to decrease slowly as
+                the array gets bigger.</li>
+    </p>
     
 <h3>Conclusion</h3>
 
