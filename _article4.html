@@ -18,29 +18,78 @@
         a subset of computations can benefit from these advantages. (I'm talking
         about dedicated graphic cards with own memory in this post - integrated
         GPUs are a different topic - I've seen some nice papers on the way discussing
-        these in a DBMS context.) There are certain algorithm criteria that indicate
-        a performance gain when using the GPU.</p>
-    <ul>
+        these in a DBMS-context.) You often hear that an algorithm will run faster
+        on the GPU if it is computational intensive. This means that the transfer
+        bottleneck is not a problem, because a lot of processing is done on a small
+        amount of data. Brute-force password cracking is a good example: you have
+        one hash key (a few bits), calculate hashes for millions of generated passwords,
+        and compare these to the hash you are looking for [1,2]. However, there
+        are number-crunching algorithms that do not fit to the GPU's programming
+        model. Although the data transfer is not a problem, the CPU can solve the
+        problem faster and more efficiently. On the other hand, there are data-intensive
+        problems that can benefit from the GPU's characteristics (mainly the high
+        bandwidth).
+        <br />From my experience, there are certain criteria that indicate a performance
+        gain when using the GPU:</p>
+    <ol>
         <li>the algorithm works in parallel with little or no overhead on the CPU</li>
-        <li>the algorithm works in a SIMD fashion</li>
-        <li>the data processes by the algorithm fits into the GPU's memory</li>
-        <li>transfer to the GPU and actual computation can overlap</li>
+        <li>the algorithm works massively parallel in a SIMD fashion</li>
         <li>processing the data on the CPU takes longer than transferring it to the
             GPU</li>
-    </ul>
-    <p>*data crunching vs. number crunching - iterations *streamable - data processed
-        part for part - parts of the result are there early</p>
+        <li>the data processed by the algorithm fits into the GPU's memory</li>
+        <li>transfer to the GPU and actual computation can overlap</li>
+    </ol>
+    <p>These five point can be categorized: to adapt your algorithm to the GPU's
+        architecture, the first two points are mandatory (they count for data intensive
+        problems as well as for computational intensive problems). The three other
+        points basically deal with the bandwidth-bottleneck of an external Coprocessor.
+        <br
+        />I differentiate between the first two points, because on the one hand
+        there are algorithms that are inherently sequential. Often they consist
+        of a tight loop with thousands of iterations where each iteration depends
+        on the previous one. A parallel implementation (even on the CPU) needs
+        an entirely different approach. On the other hand there are algorithms
+        where a parallel implementation on the CPU is already available and looks
+        promising. You can just partition the workload, process it with a number
+        of different threads and merge the intermediate results in the end. If
+        the merge overhead is comparatively small, e.g., it just involves copying
+        the intermediate results to the right positions, the algorithm typically
+        sclaes well with the number of CPU cores (until it is limited by the memory
+        bandwidth). However, this type of algorithm usually does not scale well
+        when more than a hundred partitions are used, because the merge overhead
+        grows with the number of partitions. An alogrithm for the GPU needs to
+        work with thousands of threads and in a SIMD fashion. One of the aspects
+        of SIMD is that branching should be avoided. Every thread should calculate
+        the same instruction for a different memory segment. I don't want to stretch
+        this too much at this point, but remind you that there is a difference
+        between a parallel and a massively parallel algorithm.
+        <br />Point three is plain and simple but often forgotten. The only chance for
+        an algorithm where data is processed faster than it is transferred, is
+        that GPU and CPU may be able to split the work. But in all cases I can
+        think of, such an algorithm is memory bound; so transferring the data to
+        the GPU will slow down the memory access for the CPU as well.
+        <br />Point four does not mean that data bigger than the GPUs memory cannot
+        be processed efficiently (although it may be a first sign...). But your
+        algorithm should be able to transfer a partition of the data, process it,
+        and proceed to the next one. If you repeatedly need to transfer the same
+        data back and forth because the free memory is needed in between, there
+        is a good chance that there will be no benefit in using the GPU (or any
+        other external Coprocessor). If, however, the data can be processed while
+        it is transferred (point five, also called streaming), the bandwidth is
+        the only limit. So even if the CPU is just slightly slower than the PCIe
+        bus, there is a chance that the whole process is faster on the GPU.</p>
     
 <h3>Experiment</h3>
 
-    <p>We take a look at a very simple algorithm that is used in most column
-        stores I know, e.g., SAP HANA. Every column is dictionary-encoded, i.e.,
-        every distinct value of one column is stored in a sorted dictionary and
-        the values in the column are references to the entries in the dictionary.
+    <p>To show you that even an algorithm that is data-intensive may run faster
+        on the GPU, we take a look at a very simple algorithm that is used in most
+        column stores I know of, e.g., SAP HANA. Every column is dictionary-encoded,
+        i.e., every distinct value of one column is stored in a sorted dictionary
+        and the values in the column are references to the entries in the dictionary.
         Updates to the column are usually buffered and at some point integrated.
         This integration process (in HANA this is called Delta Merge) rebuilds
         the dictionary in a first step and updates the references in a second.
-        We concentrate on this second step. Usually in the first step a mapping
+        We concentrate on the second step. Usually in the first step a mapping
         from the old reference to the new reference is created. Since references
         are just integers, the mapping is an array, where the new reference is
         stored at the position of the old one. Therefore, the algorithm just goes
@@ -57,11 +106,10 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
 </code>
 </pre>
 
-    <p>
-<b>Implementation</b>
+    
+<h4>Implementation</h4>
 
-        <br />
-        <br />The sequential CPU implementation is the one above. The second approach
+    <p>The sequential CPU implementation is the one above. The second approach
         uses OpenMP to execute the loop in parallel.
         <br />Since we want to use streaming, a bit more effort is necessary for GPU
         execution. The <span>4-way-concurrency pattern</span> described <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">here</a> is
@@ -82,19 +130,86 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
         the data has to be copied by the CPU in parallel to the target memory as
         a fifth step. GPU and PCIe bus provide enough redundant elements to do
         this all at once without loosing performance.</p>
-    <p> <b>
-      Hardware
-     </b>
+    
+<h4>Hardware</h4>
 
-        <br>Our test machine is a Linux workstation equipped with two Xeon E5-2690
+    <p>Our test machine is a Linux workstation equipped with two Xeon E5-2690
         hexa core CPUs and a NVidia Tesla K10 with 8 GB of RAM. The GPUs are connected
         via PCI-Express version 3 with a peak bandwidth of 11.2 GB/s. We measured
         the run-time for the operation with different data structures executed
         with one thread on the CPU, 32 threads on the CPU and on the GPU.</p>
-    <object
-    data="art4_fig_recoding.svg" type="image/svg+xml">Figure for recoding</object>
-        <div class="references"></div>
-        <div class="additional">The source code can be found here: <a href="https://github.com/hannesrauhe/notapaper_recode">https://github.com/hannesrauhe/notapaper_recode</a>
+    
+<h4>Results</h4>
+
+    <object data="files/figures/art4_fig_recoding.svg" type="image/svg+xml">Figure for recoding</object>
+    <p>In the figure above you can see the throughput for a vector with 4 GB
+        of integers depending on the size of the mapping array. An 1 kb array holds
+        256 different integers, i.e., there are 256 different entries in the column's
+        dictionary. The references are uniformly distributed over the column vector.
+        The blue and the red curve are the ones to compare: blue is the CPU using
+        all its cores, red is the GPU. I also added the sequential CPU implementation <i>CPU (Seq)</i> as
+        a baseline. <i>GPU (t)</i> shows the throughput for only transferring without
+        executing the kernel and <i>GPU (s)</i> is the GPU process without the initial
+        transfer of the mapping array.
+        <br /><small>Another interesting value would be the pure kernel execution time. But
+        this cannot be measured correctly with the streaming approach. If you are
+        interested in it, you have to copy all data to the card first and then
+        execute the kernel. I expect the throughput for small arrays to be between
+        50 and 100 GB/s.</small>
+
+        <br />Small arrays fit into the CPU's caches. 13 GB/s seems to be the limit
+        for reading the column vector from memory and writing it back. Since every
+        value is touched only once, the cache is useless for the vector (in fact,
+        for a good implementation you should use an instruction to ignore the caches
+        for reading and writing the vector...). The bigger the array gets, the
+        more access to slower caches (L2 and L3) is needed. At 8 MB the array does
+        not fit into the L3 cache anymore, and a third random memory access is
+        needed. At more than 128 MB the cache is useless; because of the uniform
+        distribution every access to the mapping array is a cache miss. In contrast
+        to the sequential reading and writing of the column vector the random access
+        is much slower. The throughput is constant at 1 GB/s, even for bigger arrays.
+        <br
+        />The GPU's streaming throughput is around 7 GB/s. Until 256 MB it does
+        not matter wether the kernel is executed or not, because the exectuion
+        is faster than the transfer. Between 256 MB and 4 GB the throughput decreases
+        because the transfer of the mapping array in the beginning of the process
+        takes a significant amount of time. The <i>GPU (s)</i> curve shows that the
+        kernel execution is as fast as with a smaller array.
+        <br />There are three things, I cannot explain:
+        <ul>
+            <li>I would have expected a higher througput than 7 GB/s. The PCIe bus is
+                able to handle around 15 GB in both directions at the same time.</li>
+            <li>I don't know, why GPU(t) is fluctuating between 5 and 7 GB/s for small
+                array sizes. Streaming should be constant...</li>
+            <li>The streaming throughput GPU (s) on the GPU seems to decrease slowly as
+                the array gets bigger.</li>
+    </p>
+    
+<h3>Conclusion</h3>
+
+    <p>Data intensive algorithms can benefit from the high bandwidth on the GPU
+        if they are streamable and the caches on the CPU get to small to hold data
+        that is periodically needed. In addition our streaming algorithm can be
+        executed in parallel without overhead. However, this example is certainly
+        artificial. Scenerios, where dictionaries contain more than 20,000,000
+        entries and these are uniformely distirbuted are not found often. Also,
+        references are usually bit-packed/compressed. Therefore the re-encoding
+        requires more computation and less transfer [4]. It is hard to predict
+        the effect on our comparison, because the CPU algorithm is also memory
+        bound and will therefore benefit from the compression as well.
+        <div class="references">[1] <a href="http://hashcat.net/oclhashcat-plus/">Hashcat - brute-force cracking of passwords</a>
+
+            <br
+            />[2] <a href="http://www.heise.de/ct/artikel/Die-Passwortknacker-1779840.html">German: C't Artikel ueber das Passwort-knacken als Sport</a>
+
+            <br
+            />[3] <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">Slides by NVidia -Stream and Concurrency Webinar</a>
+
+            <br
+            />[4] <a href="http://www.vldb.org/pvldb/2/vldb09-327.pdf">Thomas Wilhalm et al: SIMD-Scan: Ultra Fast in-Memory Table Scan using onChip Vector Processing Units, VLDB 2009</a>
+
+        </div>
+        <div class="additional">The source code for the experiment can be found here: <a href="https://github.com/hannesrauhe/notapaper_recode">https://github.com/hannesrauhe/notapaper_recode</a>
 
         </div>
 </article>
