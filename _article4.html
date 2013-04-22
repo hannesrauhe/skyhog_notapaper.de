@@ -99,7 +99,7 @@
 <code>
 //src and dest can point to the same address
 void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
-    for(uint idx=0;idx&lt;size;++idx) {
+    for(uint idx=0;idx<size;++idx) {
         dest[idx] = map[src[idx]];
     }
 }
@@ -196,17 +196,18 @@ void recode_cpu(int *dest, const int* src, const int *map, size_t size) {
         references are usually bit-packed/compressed. Therefore the re-encoding
         requires more computation and less transfer [4]. It is hard to predict
         the effect on our comparison, because the CPU algorithm is also memory
-        bound and will therefore benefit from the compression as well.
-        <div class="references">[1] <a href="http://hashcat.net/oclhashcat-plus/">Hashcat - brute-force cracking of passwords</a>
+        bound and will therefore benefit from the compression as well.</p>
+    <div
+    class="references">[1] <a href="http://hashcat.net/oclhashcat-plus/">Hashcat - brute-force cracking of passwords</a>
 
-            <br
-            />[2] <a href="http://www.heise.de/ct/artikel/Die-Passwortknacker-1779840.html">German: C't Artikel ueber das Passwort-knacken als Sport</a>
+        <br
+        />[2] <a href="http://www.heise.de/ct/artikel/Die-Passwortknacker-1779840.html">German: C't Artikel ueber das Passwort-knacken als Sport</a>
 
-            <br
-            />[3] <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">Slides by NVidia -Stream and Concurrency Webinar</a>
+        <br
+        />[3] <a href="http://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf">Slides by NVidia -Stream and Concurrency Webinar</a>
 
-            <br
-            />[4] <a href="http://www.vldb.org/pvldb/2/vldb09-327.pdf">Thomas Wilhalm et al: SIMD-Scan: Ultra Fast in-Memory Table Scan using onChip Vector Processing Units, VLDB 2009</a>
+        <br
+        />[4] <a href="http://www.vldb.org/pvldb/2/vldb09-327.pdf">Thomas Wilhalm et al: SIMD-Scan: Ultra Fast in-Memory Table Scan using onChip Vector Processing Units, VLDB 2009</a>
 
         </div>
         <div class="additional">The source code for the experiment can be found here: <a href="https://github.com/hannesrauhe/notapaper_recode">https://github.com/hannesrauhe/notapaper_recode</a>
