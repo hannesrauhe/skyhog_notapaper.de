@@ -89,7 +89,7 @@ As always with data-intensive processes the transfer is the bottleneck. And yes,
 
     <p>
 Et voila, Speed-Up of 100x for the sequential CPU implementation and 650x for the parallel implementation compared to Postgress. Not because of faster hardware (on this machine Postgress was able to query the database in a bit over 5 seconds) but because of an optimization to the problem. Postgress is there to execute generic statements on generic data under ACID-properties. It loads data from disk and stores table row-wise. It is not optimized for that kind of problem, so I guess it makes virtual function calls for every arithmetic operator in the filter-formula.<br /> 
-If I had to optimize my database system for this kind of statement, I would use a JIT-compile to generate executable code from the formula, and store data column-wise in memory. I guess, this is what PGStrom does. Parsing the SQL-statement, JIT-compiling the code, e.g., with OpenCL, and dealing with all the overhead of a DBMS could take the 100 ms more, they need. But with a parallel CPU implementation, they would not be much slower, maybe even faster.</p>
+If I had to optimize my database system for this kind of statement, I would use a JIT-compiler to generate executable code from the formula, and store data column-wise in memory. I guess, this is what PGStrom does. Parsing the SQL-statement, JIT-compiling the code, e.g., with OpenCL, and dealing with all the overhead of a DBMS could take the 100 ms more, they need. But with a parallel CPU implementation, they would not be much slower, maybe even faster.</p>
 <p>
 tl;dr; Do not compare apples and oranges.
 </p>
