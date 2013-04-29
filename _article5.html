@@ -19,14 +19,14 @@ Now the part, where I'm skeptical: I don't think that it is appropriate to compa
     <p>In my opinion one way of a fair comparison is to hard-code this query in C and in CUDA and compare the run-time. This SQL statement</p>
 <pre>
 <code>
-SELECT COUNT(*) FROM t1 WHERE sqrt((x-25.6)^2 + (y-12.8)^2) < 15;
+SELECT COUNT(*) FROM t1 WHERE sqrt((x-25.6)^2 + (y-12.8)^2) &lt; 15;
 </code>
 </pre>
 <p>becomes the following C code:</p>
 <pre>
 <code>
-for(int i=0; i<(int)t_size; i++) {
-  result += (sqrt( pow((x[i]-25.6),2) + pow((y[i]-12.8),2)) < 15);
+for(int i=0; i&lt;(int)t_size; i++) {
+  result += (sqrt( pow((x[i]-25.6),2) + pow((y[i]-12.8),2)) &lt; 15);
 }
 </code>
 </pre>
