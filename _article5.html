@@ -8,8 +8,10 @@
     
 <h3>Introduction</h3>
 
-    <p>A lot of colleagues mailed me the link to <a href="http://wiki.postgresql.org/wiki/PGStrom">PGStrom</a>, because they knew that this is in my domain and some of them also knew that 10x speedups and more by using a GPU in my field of work usually makes me skeptical. Let me summarize what PGStrom does on the GPU: it executes statements in the form of<br />
-<code>SELECT * FROM table WHERE &lt;complex formula&gt;</code><br />
+    <p>A lot of colleagues mailed me the link to <a href="http://wiki.postgresql.org/wiki/PGStrom">PGStrom</a>, because they knew that this is in my domain and some of them also knew that 10x speedups and more by using a GPU in my field of work usually makes me skeptical. Let me summarize what PGStrom does on the GPU: it executes statements in the form of
+<br /><br />
+<code>SELECT * FROM table WHERE &lt;complex formula&gt;</code>
+<br /><br />
 ...on the GPU. This is not a bad idea at all. If you take a look at my <a href="article4.html">last blog post</a>, you can see that we have easily 5 checks out of 6. The algorithm can be processed in a SIMD fashion, streamed without overhead and we do not need to transfer data more than once (a.k.a. "fits into GPU memory"). However, the most important check is missing, and that's the part where I am skeptical: I am not sure if the transfer to the GPU is faster than the computation on the CPU.
 I don't think that it is appropriate to compare Postgress against an optimized implementation on the GPU. They claim that they process 10 Mio records in 7 seconds with Postgress. 10 Mio sounds like a huge number. But the example statement processes only two columns with floating point numbers. Assuming these numbers are 32 bit-float types, the CPU processes only 76 MB -- in 7 seconds! Remember that one CPU thread is capable of transferring around 4 GB of data per second!
 </p>
