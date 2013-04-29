@@ -47,10 +47,12 @@ You can adjust this by setting the following in pgstrom_test.h:
 
 <pre>
 <code>
-static const int STREAM_BUF_SIZE = 64*1024; //in number of floats
+static const int STREAM_BUF_SIZE = 128*1024; //in number of floats
 #define NUMBER_OF_THREADS 512
 </code>
 </pre>
+
+<p>Additionally I implemented a naive version that copies everything to the GPU, processes it and copies the result back. This way we can also compare the GPU's and the CPU's pure execution time without the transfer. If you hold a replication of the table in the GPU's memory, this would be the number to look at. However, PGStrom also streams the data.</p>
 
 <h4>Hardware</h4>
 
@@ -60,12 +62,35 @@ static const int STREAM_BUF_SIZE = 64*1024; //in number of floats
     
 <h4>Results</h4>
 
+<p>The CPU takes 73 ms with one thread and 12 ms with 32 threads. The GPU needs 3 ms to execute the kernel and give the result back. But the whole setup without streaming takes 76 ms, 67 ms with streaming. However, 40 ms of the streaming approach are needed for the setup. I think it is possible to do this once at the startup of the DBMS.<br />
+Therefore, in my opinion it is fair to compare the 15 ms on the GPU to the 12 ms on the parallel CPU.
+</p>
+
+<pre>
+<code>
+./pgstrom_test
+Size is 76.294 MB
+Result: 9934; CPU 0.073 sec
+Result: 9934; p CPU 0.012 sec
+Result: 9934; GPU naive 0.003 (0.076) sec
+Result: 9934; GPU stream 0.015 (0.067) sec
+</code>
+</pre>
+
+
     <p>
-    </p>
+As always with data-intensive processes the transfer is the bottleneck. And yes, this is data-intensive. Everything can be computed in linear time. It takes a lot of square roots and exponents in the formula to make this compute-intensive. However, we achieve a bandwidth of around 5 GB/s with the streaming approach. Maybe this can be doubled - the GPU is faster then, but still in the same league.</p>
+
+
     
 <h3>Conclusion</h3>
 
-    <p></p>
+    <p>
+Et voila, Speed-Up of 100x for the sequential CPU implementation and 650x for the parallel implementation compared to Postgress. Not because of faster hardware (on this machine Postgress was able to query the database in a bit over 5 seconds) but because of an optimization to the problem. Postgress is there to execute generic statements on generic data under ACID-properties. It loads data from disk and stores table row-wise. It is not optimized for that kind of problem, so I guess it makes virtual function calls for every arithmetic operator in the filter-formula.<br /> 
+If I had to optimize my database system for this kind of statement, I would use a JIT-compile to generate executable code from the formula, and store data column-wise in memory. I guess, this is what PGStrom does. Parsing the SQL-statement, JIT-compiling the code, e.g., with OpenCL, and dealing with all the overhead of a DBMS could take the 100 ms more, they need. But with a parallel CPU implementation, they would not be much slower, maybe even faster.</p>
+<p>
+tl;dr; Do not compare apples and oranges.
+</p>
         <div class="references">
 
         </div>
