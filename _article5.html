@@ -51,9 +51,11 @@
 
     <p>becomes the following C code:</p>
 <pre>
-<code>for(int i=0; i&lt;(int)t_size; i++) {
+<code>
+for(int i=0; i&lt;(int)t_size; i++) {
   result += (sqrt( pow((x[i]-25.6),2) + pow((y[i]-12.8),2)) &lt; 15);
-}</code>
+}
+</code>
 </pre>
 
     <p>This can easily be parallelized with openmp. The GPU implementation is
@@ -71,10 +73,12 @@
     <p>The buffers hold 64*1024 floating point numbers each. You can adjust this
         by setting the following in pgstrom_test.h:</p>
 
+<pre>
 <code>
 static const int STREAM_BUF_SIZE = 128*1024; //in number of floats
 #define NUMBER_OF_THREADS 512
 </code>
+</pre>
 
     <p>Additionally I implemented a naive version that copies everything to the
         GPU, processes it and copies the result back. This way we can also compare
@@ -99,6 +103,7 @@ static const int STREAM_BUF_SIZE = 128*1024; //in number of floats
         <br />Therefore, in my opinion it is fair to compare the 15 ms on the GPU to
         the 12 ms on the parallel CPU.</p>
 
+<pre>
 <code>
 ./pgstrom_test
 Size is 76.294 MB
@@ -107,6 +112,7 @@ Result: 9934; p CPU 0.012 sec
 Result: 9934; GPU naive 0.003 (0.076) sec
 Result: 9934; GPU stream 0.015 (0.067) sec
 </code>
+</pre>
 
     <p>As always with data-intensive processes the transfer is the bottleneck.
         And yes, this is data-intensive. Everything can be computed in linear time.
