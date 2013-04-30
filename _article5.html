@@ -2,8 +2,8 @@
     
 <h2>PGStrom for Postgress</h2>
 
-    <div class="short"></div>
-    <div class="tags">linear algebra</div>
+    <div class="short">PGStorm is a tool to execute a special type of SQL query on the GPU. They claim to achieve a speedup of 50x compared to standard postgress because they use the GPU. In this post I show that a multi-core CPU can process this queries as fast as the GPU. The speedup </div>
+    <div class="tags">PGStorm unfair comparisons</div>
     <div class="date">2013-04-28</div>
     
 <h3>Introduction</h3>
@@ -36,9 +36,10 @@
     
 <h3>Experiment and Implementation</h3>
 
-    <p>Because of the reallyIn my opinion one way of a fair comparison is to
-        hard-code this query in C and in CUDA and compare the run-time. This SQL
-        statement</p>
+    <p>Because of the detailed description of the PGStrom test setup on the wiki-page
+        (better than in most research papers...), we can easily reproduce their
+        tests. In my opinion one way of a fair comparison of GPU vs CPU is to hard-code this
+        query in C and in CUDA and compare the run-time. This SQL statement</p>
 <pre>
 <code>
 SELECT COUNT(*) FROM t1 WHERE sqrt((x-25.6)^2 + (y-12.8)^2) &lt; 15;
