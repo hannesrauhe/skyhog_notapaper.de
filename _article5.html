@@ -119,6 +119,10 @@ Result: 9934; GPU stream 0.015 (0.067) sec
         And yes, this is data-intensive. Everything can be computed in linear time.
         It takes a lot of square roots and exponents in the formula to make this
         compute-intensive.</p>
+    <p>Although at a first glance my simple implementation looks faster than
+        PGStrom, it really is not. PGStrom just needs 150 ms more to parse the
+        SQL-statement, create the kernel code, load the data from disk, and deal
+        with all the additional overhead of the DBMS.</p>
     
 <h3>Conclusion</h3>
 
@@ -127,14 +131,13 @@ Result: 9934; GPU stream 0.015 (0.067) sec
         hardware (on this machine Postgres needed a bit over 5 seconds for the
         query) but because of an optimization to the problem. Postgres is there
         to execute generic statements on generic data under ACID-properties. It
-        loads data from disk and stores tables row-wise. It is not optimized for
-        that kind of problem, so I guess it makes virtual function calls for every
-        arithmetic operator in the filter-formula.
+        loads data from disk and stores tables row-wise. It can execute statements
+        of the discuessed form but it is not optimized for that kind of problem.
+        I guess it makes virtual function calls for every arithmetic operator in
+        the filter-formula every time it evaluates one record.
         <br />If I had to optimize my database system for this kind of statement, I
         would use a JIT-compiler to generate executable code from the formula,
-        and store data column-wise. I guess, PGStrom does something similar. It
-        just needs 100 ms more to parse the SQL-statement, create the kernel code,
-        load the data from disk and deal with all the overhead of the DBMS. But
+        and store data column-wise. I guess, PGStrom does something similar. But
         with a parallel CPU implementation instead of CUDA, they would not be much
         slower, maybe even faster.</p>
     <p>tl;dr; Do not compare apples and oranges.</p>
