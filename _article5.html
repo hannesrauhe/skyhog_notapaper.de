@@ -1,61 +1,87 @@
 <article>
     
-<h2>PGStrom for Postgress</h2>
+<h2>PGStrom for Postgres</h2>
 
-    <div class="short"></div>
-    <div class="tags">linear algebra</div>
+    <div class="short">PGStrom is a tool to execute a special type of SQL query on the GPU. The
+        developers(?) claim to achieve a speedup of 50x compared to standard Postgres
+        because they use the GPU. I do not doubt that PGStrom is faster than Postgres,
+        but this is not because of the GPU. In this post I show that a multi-core
+        CPU can process this queries as fast as the GPU. For the test-case described
+        on the PGStrom wiki page the CPU is even a bit faster.</div>
+    <div class="tags">PGStrom apples oranges</div>
     <div class="date">2013-04-28</div>
     
 <h3>Introduction</h3>
 
-    <p>A lot of colleagues mailed me the link to <a href="http://wiki.postgresql.org/wiki/PGStrom">PGStrom</a>, because they knew that this is in my domain and some of them also knew that 10x speedups and more by using a GPU in my field of work usually makes me skeptical. Let me summarize what PGStrom does on the GPU: it executes statements in the form of
-<br /><br />
+    <p>A lot of colleagues mailed me the link to <a href="http://wiki.postgresql.org/wiki/PGStrom">PGStrom</a>,
+        because they knew that this is in my domain and some of them also knew
+        that 10x speedups and more by using a GPU in my field of work usually makes
+        me skeptical.
+        <br />PGStrom executes statements in the form of
+        <br />
+        <br />
 <code>SELECT * FROM table WHERE &lt;complex formula&gt;</code>
-<br /><br />
-...on the GPU. This is not a bad idea at all. If you take a look at my <a href="article4.html">last blog post</a>, you can see that we have easily 5 checks out of 6. The algorithm can be processed in a SIMD fashion, streamed without overhead and we do not need to transfer data more than once (a.k.a. "fits into GPU memory"). However, the most important check is missing, and that's the part where I am skeptical: I am not sure if the transfer to the GPU is faster than the computation on the CPU.
-I don't think that it is appropriate to compare Postgress against an optimized implementation on the GPU. They claim that they process 10 Mio records in 7 seconds with Postgress. 10 Mio sounds like a huge number. But the example statement processes only two columns with floating point numbers. Assuming these numbers are 32 bit-float types, the CPU processes only 76 MB -- in 7 seconds! Remember that one CPU thread is capable of transferring around 4 GB of data per second!
-</p>
+
+        <br />
+        <br />...on the GPU. This is not a bad idea at all. If you take a look at my
+        <a
+        href="article4.html">last blog post</a>, you can see that we have easily 5 checks out of 6.
+            The algorithm can be processed in a SIMD fashion, streamed without overhead
+            and we do not need to transfer data more than once (a.k.a. "fits into GPU
+            memory"). However, the most important check is missing, and that's the
+            part where I am skeptical: I am not sure if the transfer to the GPU is
+            faster than the computation on the CPU.
+            <br />I don't think that it is appropriate to compare Postgres against an optimized
+            implementation on the GPU. Postgres processes 10 Mio records in 7 seconds
+            in their experiment. 10 Mio sounds like a huge number, but actually the
+            example statement processes only two columns with floating point numbers.
+            Assuming these numbers are 32 bit-float types, the CPU processes only 76
+            MB -- in 7 seconds! Remember that one CPU thread is capable of transferring
+            around 4 GB of data per second!</p>
     
 <h3>Experiment and Implementation</h3>
 
-    <p>In my opinion one way of a fair comparison is to hard-code this query in C and in CUDA and compare the run-time. This SQL statement</p>
-<pre>
+    <p>In my opinion one way of a fair comparison of GPU vs CPU is to hard-code
+        this query in C and in CUDA and compare the run-time. Because of the detailed
+        description of the PGStrom test setup on the wiki-page (better than in
+        most research papers...), we can easily reproduce their tests. This SQL
+        statement</p>
+
+<code>SELECT COUNT(*) FROM t1 WHERE sqrt((x-25.6)^2 + (y-12.8)^2) &lt; 15;</code>
+
+    <p>becomes the following C code:</p>
+
 <code>
-SELECT COUNT(*) FROM t1 WHERE sqrt((x-25.6)^2 + (y-12.8)^2) &lt; 15;
+for(int i=0; i&lt;(int)t_size; i++) {<br />
+&nbsp;&nbsp;result += (sqrt( pow((x[i]-25.6),2) + pow((y[i]-12.8),2)) &lt; 15);<br />
+}<br />
 </code>
-</pre>
-<p>becomes the following C code:</p>
-<pre>
+    <p>This can easily be parallelized with openmp. The GPU implementation is
+        very similar to the one from the last post. We copy and process data on
+        CPU and GPU in parallel. This requires 5 parallel lines of work:</p>
+    <ol>
+        <li>copy data from the columns to a buffer in main memory (this must be pinned
+            memory to allow async. transfers)</li>
+        <li>copy data from the main memory buffer to the GPU memory buffer</li>
+        <li>process/filter data in the GPU memory buffer by executing the kernel on
+            the GPU</li>
+        <li>copy the result of the kernel (a bitvector) from GPU to CPU</li>
+        <li>count the 1-bits on the CPU and add this to the final result</li>
+    </ol>
+    <p>The buffers hold 64*1024 floating point numbers each. You can adjust this
+        by setting the following in pgstrom_test.h:</p>
+
 <code>
-for(int i=0; i&lt;(int)t_size; i++) {
-  result += (sqrt( pow((x[i]-25.6),2) + pow((y[i]-12.8),2)) &lt; 15);
-}
-</code>
-</pre>
-
-    <p>This can easily be parallelized with openmp. The GPU implementation is very similar to the one from the last post. We copy and process data on CPU and GPU in parallel. This requires 5 lines of work:</p>
-<ol>
-<li>copy data from the columns to a buffer in main memory (this must be pinned memory to allow async. transfers)</li>
-<li>copy data from the main memory buffer to the GPU memory buffer</li>
-<li>process/filter data in the GPU memory buffer by executing the kernel on the GPU</li>
-<li>copy the result of the kernel (a bitvector) from GPU to CPU</li>
-<li>count the 1-bits on the CPU and add this to the final result</li>
-</ol>
-
-<p>
-The buffers hold 64*1024 floating point numbers each.
-You can adjust this by setting the following in pgstrom_test.h: 
-</p>
-
-<pre>
-<code>
-static const int STREAM_BUF_SIZE = 128*1024; //in number of floats
+static const int STREAM_BUF_SIZE = 128*1024; //in number of floats<br />
 #define NUMBER_OF_THREADS 512
 </code>
-</pre>
 
-<p>Additionally I implemented a naive version that copies everything to the GPU, processes it and copies the result back. This way we can also compare the GPU's and the CPU's pure execution time without the transfer. If you hold a replication of the table in the GPU's memory, this would be the number to look at. However, PGStrom also streams the data.</p>
-
+    <p>Additionally I implemented a naive version that copies everything to the
+        GPU, processes it and copies the result back. This way we can also compare
+        the GPU's and the CPU's pure execution time without the transfer. If you
+        hold a replication of the table in the GPU's memory, this would be the
+        number to look at. However, PGStrom also streams the data.</p>
+    
 <h4>Hardware</h4>
 
     <p>Our test machine is a Linux workstation equipped with two Xeon E5-2690
@@ -64,41 +90,52 @@ static const int STREAM_BUF_SIZE = 128*1024; //in number of floats
     
 <h4>Results</h4>
 
-<p>The CPU takes 73 ms with one thread and 12 ms with 32 threads. The GPU needs 3 ms to execute the kernel and give the result back. But the whole setup without streaming takes 76 ms, 67 ms with streaming. However, 40 ms of the streaming approach are needed for the setup. I think it is possible to do this once at the startup of the DBMS.<br />
-Therefore, in my opinion it is fair to compare the 15 ms on the GPU to the 12 ms on the parallel CPU.
-</p>
+    <p>The CPU takes 73 ms with one thread and 12 ms with 32 threads. The naive
+        GPU version needs 3 ms to execute the kernel and give the result back.
+        But the whole setup without streaming takes 76 ms, 67 ms with streaming.
+        However, 40 ms of the streaming approach are needed for the setup, i.e.,
+        allocating buffers on the GPU and pinned memory on the CPU. I think it
+        is possible to do this once at the startup of the DBMS.
+        <br />Therefore, in my opinion it is fair to compare the 15 ms on the GPU to
+        the 12 ms on the parallel CPU.</p>
 
-<pre>
+
 <code>
-./pgstrom_test
-Size is 76.294 MB
-Result: 9934; CPU 0.073 sec
-Result: 9934; p CPU 0.012 sec
-Result: 9934; GPU naive 0.003 (0.076) sec
-Result: 9934; GPU stream 0.015 (0.067) sec
+./pgstrom_test<br />
+Size is 76.294 MB<br />
+Result: 9934; CPU 0.073 sec<br />
+Result: 9934; p CPU 0.012 sec<br />
+Result: 9934; GPU naive 0.003 (0.076) sec<br />
+Result: 9934; GPU stream 0.015 (0.067) sec<br />
 </code>
-</pre>
 
-
-    <p>
-As always with data-intensive processes the transfer is the bottleneck. And yes, this is data-intensive. Everything can be computed in linear time. It takes a lot of square roots and exponents in the formula to make this compute-intensive. However, we achieve a bandwidth of around 5 GB/s with the streaming approach. Maybe this can be doubled - the GPU is faster then, but still in the same league.</p>
-
-
+    <p>As always with data-intensive processes the transfer is the bottleneck.
+        And yes, this is data-intensive. Everything can be computed in linear time.
+        It takes a lot of square roots and exponents in the formula to make this
+        compute-intensive.</p>
+    <p>Although at a first glance my simple implementation looks faster than
+        PGStrom, it really is not. PGStrom just needs 150 ms more to parse the
+        SQL-statement, create the kernel code, load the data from disk, and deal
+        with all the additional overhead of the DBMS.</p>
     
 <h3>Conclusion</h3>
 
-    <p>
-Et voila, Speed-Up of 100x for the sequential CPU implementation and 650x for the parallel implementation compared to Postgress. Not because of faster hardware (on this machine Postgress was able to query the database in a bit over 5 seconds) but because of an optimization to the problem. Postgress is there to execute generic statements on generic data under ACID-properties. It loads data from disk and stores table row-wise. It is not optimized for that kind of problem, so I guess it makes virtual function calls for every arithmetic operator in the filter-formula.<br /> 
-If I had to optimize my database system for this kind of statement, I would use a JIT-compiler to generate executable code from the formula, and store data column-wise in memory. I guess, this is what PGStrom does. Parsing the SQL-statement, JIT-compiling the code, e.g., with OpenCL, and dealing with all the overhead of a DBMS could take the 100 ms more, they need. But with a parallel CPU implementation, they would not be much slower, maybe even faster.</p>
-<p>
-tl;dr; Do not compare apples and oranges.
-</p>
-        <div class="references">
-
-        </div>
-        <div class="additional">
-The <a href="https://github.com/hannesrauhe/notapaper_pgstrom_test.git">source code is on github</a>. The project files for nsight are also in the repository.
-
-
-        </div>
+    <p>Et voila, Speed-Up of 100x for the sequential CPU implementation and 650x
+        for the parallel implementation compared to Postgres. Not because of faster
+        hardware (on this machine Postgres needed a bit over 5 seconds for the
+        query) but because of an optimization to the problem. Postgres is there
+        to execute generic statements on generic data under ACID-properties. It
+        loads data from disk and stores tables row-wise. It can execute statements
+        of the discuessed form but it is not optimized for that kind of problem.
+        I guess it makes virtual function calls for every arithmetic operator in
+        the filter-formula every time it evaluates one record.
+        <br />If I had to optimize my database system for this kind of statement, I
+        would use a JIT-compiler to generate executable code from the formula,
+        and store data column-wise. I guess, PGStrom does something similar. But
+        with a parallel CPU implementation instead of CUDA, they would not be much
+        slower, maybe even faster.</p>
+    <p>tl;dr; Do not compare apples and oranges.</p>
+    <div class="references"></div>
+    <div class="additional">The <a href="https://github.com/hannesrauhe/notapaper_pgstrom_test.git">source code is on github</a>.
+        The project files for nsight are also in the repository.</div>
 </article>
