@@ -1,6 +1,9 @@
-.main {width: 98%; margin-left:auto; margin-right:auto; min-width: 600px}
+.main {width: 98%; margin-left:auto; margin-right:auto; min-width: 600px; clear: both;}
+.static_main {padding-top: 5px;}
 article { border: 1px dashed grey; width: 80%; padding:5px; padding-top:0px; margin-bottom:5px;text-align: justify;}
 aside {float:right; width: 20%;}
 nav ul {list-style: none;}
+nav ul li {float: left; padding: 7px;margin-bottom: 10px;}
 nav a {text-decoration: none;}
 .buttons { margin-left:20px }
+.comments { width: 600px; margin: 10px; margin-left: 30px;}
