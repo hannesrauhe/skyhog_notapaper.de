@@ -8,6 +8,7 @@
         <meta name="author" content="Hannes Rauhe" />
         <meta name="google-site-verification" content="wd3PxCwf-QAstJTk1XnOezjnO07p3KtcRacPEWcKfOM"
         />
+        <script type="text/javascript" src="script.js" />
     </head>
     
     <body>
@@ -34,15 +35,20 @@
                     <p>Here we will see the article...</p>
                 </article>
             </div>
+            <div class="comments">
+                <div id="disqus_thread">Click <a href="#" onClick="enable_comments();">here</a> to enable comments
+                    powered by <a href="http://disqus.com" class="dsq-brlink"><span class="logo-disqus">Disqus</span></a> (third-party
+                    service - needs JavaScript)</div>
+            </div>
         </div>
         <footer>By <a href="https://plus.google.com/114871626992703677142
 ?rel=author">Hannes Rauhe</a>
-
-            <span class="buttons">
+ <span class="buttons">
 <a href="http://flattr.com/thing/1250646/Not-A-Paper" target="_blank">
-<img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /></a>
+<img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" style="vertical-align: text-bottom" /></a>
 
             </span>
+
         </footer>
         <!-- Piwik -->
         <script type="text/javascript">
@@ -57,6 +63,9 @@
                 var d=document, g=d.createElement("script"), s=d.getElementsByTagName("script")[0]; g.type="text/javascript";
                 g.defer=true; g.async=true; g.src=u+"piwik.js"; s.parentNode.insertBefore(g,s);
               })();
+           if(getCookie("comments")=="enabled") {
+              enable_comments();
+           }
         </script>
         <!-- End Piwik Code -->
     </body>
