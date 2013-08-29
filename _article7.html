@@ -1,0 +1,61 @@
+<article>
+    
+<h2>Using CUDA in DB2's UDFs</h2>
+
+    <div class="short">Every major DBMS offers the possiblity to execute application logic inside
+        the DBMS. The possibilities start at stored procedures with some kind of
+        procedural SQL and end at shared system libraries that can do basically
+        everything. DB2 even allows to use any compiler you like for shared libraries,
+        e.g., NVidia nvcc</div>
+    <div class="tags">DB2 UDF CUDA</div>
+    <div class="date">2013-08-19</div>
+    
+<h3>Introduction</h3>
+
+    <p>Application developers usually build software on top of database systems
+        and use SQL as an interface, i.e., their program collects data from the
+        DB and stores it in memory for processing. With this approach some of the
+        advantages of a DBMS are lost. As soon as the data has been extracted,
+        indexes the DBMS might have built cannot be used and there is an extra
+        copy of the data in the application process. Especially with large data
+        chunks, this can be a performance problem and maybe even a functional one,
+        because the amount of memory needed might not be available. Another disadvatage
+        is that the application cannot use DBMS operators on the extracted data
+        or its results without writing it back to the database. This also means
+        that the application cannot be part of an execution plan in the DBMS, which
+        might be beneficial in some scenarios.</p>
+    <p>Database vendors have addressed this problem for quite some time now by
+        providing developers the possibilty to execute code in the DBMS. These
+        user defined functions or stored procedure are available in different forms.
+        In the most simple cases they just extend SQL with the possibility to store
+        results in variables and reuse them in other SQL statements, which mostly
+        enhances readability and maintainability. The more interesting possibility
+        is to write code in a procedural language and expose this code as a DBMS
+        operator that can be used in SQL statements and therefore also in execution
+        plans. SAP HANA for instance allows developers to use the C-like language
+        L in stored procedures, or even R as a statistical language. HANA compiles
+        the code internally at run-time before execution. Therefore it is not possible
+        to use NVidia GPUs with CUDA or Intel's Xeon Phi, because they need their
+        own compilers.</p>
+    <p>DB2 uses a more radical approach by allowing the developer to link shared
+        libraries to the DBMS dynamicall at run time. These shared libraries can
+        be written in C (among others) and compiled with any compiler. They have
+        to provide a function with a certain interface in a way that DB2 is able
+        to call the function as part of an execution plan. IBM provides lean header
+        files to map SQL datatypes to the languages datatypes and tools to compile
+        SQL statements for database access into the UDF.</p>
+    <p>The almost priceless advantage of this approach is that we can use almost
+        any library or code written in C (or Java etc.) and use this to access
+        and manipulate data inside the DBMS. The results can be stored in the databasem
+        used for further operations or just presented to the user. All the developer
+        has to do is to write a reasonably small wrapper function around any given
+        code.</p>
+    
+<h3>Experiment</h3>
+
+    <p></p>
+    
+<h3>Conclusion</h3>
+
+    <p></p>
+</article>

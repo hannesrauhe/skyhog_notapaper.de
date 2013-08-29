@@ -1,0 +1,126 @@
+<article>
+    
+<h2>Small Benchmark: CUDA's Dynamic Parallelism</h2>
+
+    <div class="short">I did a little benchmark to test out Dynamic Parallelism on the K20 GPU
+        and was surprised about the bad performance.</div>
+    <div class="tags">dynamic parallelism Benchmark</div>
+    <div class="date">2013-07-19</div>
+    
+<h3>Introduction</h3>
+
+    <p>I implemented some statistical methods for selectivity estimations in
+        DBMS in the last weeks and tried out the dynmaic parallelism feature of
+        the compute capability 3.5., which is available on the K20 and the GTX
+        780 as well as the GTX Titan. Dynamic Parallelism means in short that CUDA
+        kernels can start other kernels. You can use a different number of workgroups
+        and threads for the nested kernels, hence the term dynamic. Together with
+        the possbility to allocate global memory from inside kernels, which is
+        available since Fermi, this allows the developer to do almost everything
+        inside kernels without involving the CPU.
+        <br />After the first working implementation of my algorithms I also implemented
+        a version without dynamic parallelism and was surprise that this ran around
+        10% faster on the same GPU. So I did a little test-run to verify that the
+        slower execution time was because of dynamic parallelism.</p>
+    
+<h3>Experiment</h3>
+
+    <p>I call a simple multiply-kernel a thousand times.</p>
+<pre>
+<code>
+#include &lt;stdio.h&gt;
+#include &lt;sys/time.h&gt;
+#include "cuda_runtime.h"
+
+double time_in_seconds (void) {
+    struct timeval tv;
+    gettimeofday(&amp;tv, NULL);
+    return (double)tv.tv_sec + (double)tv.tv_usec / 1000000.0;
+}
+
+__global__ void multiply(const double* a, const double* b, double*c) {
+    const int tidx = threadIdx.x + blockDim.x * blockIdx.x;
+    c[tidx] = a[tidx]*b[tidx];
+}
+
+__global__ void multiply_dynpar(const double* a, const double* b, double*c, const uint size, const uint runs = 1000) {
+    const uint numThreads = 256;
+    const uint numWG = size/numThreads;
+    for(uint r=0;r&lt;runs;++r) {
+        multiply&lt;&lt;&lt;numWG,numThreads&gt;&gt;&gt;(a,b,c);
+        cudaDeviceSynchronize();
+    }
+}
+
+void multiply_trad(const double* a, const double* b, double*c, const uint size, const uint runs = 1000) {
+    const uint numThreads = 256;
+    const uint numWG = size/numThreads;
+    for(uint r=0;r&lt;runs;++r) {
+        multiply&lt;&lt;&lt;numWG,numThreads&gt;&gt;&gt;(a,b,c);
+        cudaThreadSynchronize();
+    }
+}
+
+int main(int argc, char** argv) {
+    uint s = 1000*10;
+    if(argc&gt;1) {
+        s = atoi(argv[1]);
+        printf("Size: %d\n",s);
+    }
+
+    double *dev_a, *dev_b, *dev_c;
+    cudaMalloc( (void**)&amp;dev_a, s*sizeof(double));
+    cudaMalloc( (void**)&amp;dev_b, s*sizeof(double));
+    cudaMalloc( (void**)&amp;dev_c, s*sizeof(double));
+
+    double t1,t2;
+
+    for(int i=0;i&lt;2;++i) {
+
+        t1 = time_in_seconds();
+        multiply_dynpar&lt;&lt;&lt;1,1&gt;&gt;&gt;(dev_a,dev_b,dev_c,s);
+        cudaThreadSynchronize();
+        t2 = time_in_seconds();
+        printf("Time dynp: %.3f\n", t2-t1);
+
+        t1 = time_in_seconds();
+        multiply_trad(dev_a,dev_b,dev_c,s);
+        t2 = time_in_seconds();
+        printf("Time trad: %.3f\n", t2-t1);
+    }
+}
+</code>
+</pre>
+
+    <p>And here are the results:</p>
+<pre>
+<code>
+&gt; test_dynamicpar/Release/test_dynamicpar 
+Time trad: 0.023
+Time dynp: 0.030
+Time trad: 0.021
+Time dynp: 0.029
+&gt; test_dynamicpar/Release/test_dynamicpar 100000
+Size: 100000
+Time trad: 0.039
+Time dynp: 0.053
+Time trad: 0.038
+Time dynp: 0.052
+&gt; test_dynamicpar/Release/test_dynamicpar 1000000
+Size: 1000000
+Time trad: 0.181
+Time dynp: 0.196
+Time trad: 0.180
+Time dynp: 0.195
+&gt; test_dynamicpar/Release/test_dynamicpar 10000000
+Size: 10000000
+Time trad: 1.604
+Time dynp: 1.675
+Time trad: 1.601
+Time dynp: 1.675
+</code>
+</pre>
+
+    <p>As you can see, the execution time for the traditional approach is always
+        a bit lower. If you have some explanation, I'll be happy to hear it.</p>
+</article>
