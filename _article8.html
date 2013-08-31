@@ -1,20 +1,142 @@
 <article>
     
-<h2>Using GPUs for Query Execution</h2>
+<h2>GPUs for Query Execution: Ocelot, gpudb and our approach</h2>
 
-    <div class="short">On ADBIS we published a paper about query execution on GPUs. A week earlier two papers with the same general topic were presented on VLDB</div>
-    <div class="tags">ADBIS paper query execution</div>
-    <div class="date">2013-08-29</div>
-    
-<h3>Introduction</h3>
+    <div class="short">On ADBIS we published a paper about query execution on GPUs. A week earlier
+        two papers with the same general topic were presented on VLDB. I'm comparing the approaches and the findings. In my opinion, the Ocelot approach is the right one for future DBMS</div>
+    <div
+    class="tags">ADBIS paper query execution</div>
+        <div class="date">2013-08-29</div>
+        
+<h3>Ocelot and gpudb</h3>
 
-    <p>I already wrote a <a href="http://blog.notapaper.de/article3.html">short post</a> about the research state of query processing on the GPU. This year, a lot has changed.</p>
-    
-<h3>Experiment</h3>
+        <p>I already wrote a <a href="http://blog.notapaper.de/article3.html">short post</a> about
+            the research state of query processing on the GPU. This year, a lot has
+            changed. On the VLDB two papers were presented that focus on the topic
+            of SQL query execution on GPUs. Except for their general proof-of-concept,
+            that GPUs can execute queries, their results are quite different. Thankfully,
+            both teams provide their implementations as open source software.</p>
+        <p>The first paper <a href="http://www.cse.ohio-state.edu/hpcs/WWW/HTML/publications/abs13-2.html" class="link-ref">The Yin and Yang of processing data warehousing queries on GPU devices</a> focuses
+            on queries from the <a href="http://www.cs.umb.edu/~poneil/StarSchemaB.PDF" class="link-ref">Star Schema Benchmark</a> and
+            compares the results of their implementation <a href="https://code.google.com/p/gpudb/">gpudb</a> on
+            different desktop GPUs and Intel's i7. They mention limitations, e.g.,
+            data must be in pinned memory for fast transfer, but to my surprise they
+            conclude that a GPU is always faster than the CPU despite the data transfer
+            (with Speed-Ups from 2x to 7x).</p>
+        <p>The authors of the second paper <a href="http://www.vldb.org/pvldb/vol6/p709-heimel.pdf" class="link-ref">Hardware-Oblivious Parallelism for In-Memory Column-Stores</a> do
+            not intent to show that GPUs are better query executors, but argue that
+            a DBMS must be able to use the new architectures which are integrated into
+            the CPU. AMD's Accelerated Processing Units and the integrated GPUs in
+            Intel's Haswell architecture are getting more and more popular. Not using
+            these chips is similar to not supporting multiple threaded execution today.
+            Their implementation also uses a different approach: they replaced the
+            MonetDB Execution engine with a similar one based on OpenCL. It also uses
+            a column-at-a-time processing model and supports all queries, MonetDB can
+            handle. An additional data manager transfers columns to the GPU when they
+            are needed and caches them their. The measurements are all done on a hot
+            cache, so transfer times are ignored. However, at SF 8 the GPU's memory
+            is needed for the input data and intermediate results have to be swaped
+            to the host memory. For this reason the results are a bit counter-intuitive:
+            the GPU is fast for the small and slow for the intermediate and it cannot
+            compute the large dataset. It would be quite interesting to see Ocelot
+            working on an APU.</p>
+        <p>In the previous post I already mentioned that we tried OLAP query execution
+            on GPUs and published the results on ADBIS. We tried an even more radical
+            approach than the authors of the first paper and wrote the queries by hand
+            according a map/reduce-like model described in <a href="#" class="link-ref">our paper</a>.
+            We already have a prototype that generates the code from SQL queries for
+            the CPU - it is possible to adjust this to produce OpenCL code for queries
+            that can run on the GPU. The limits for our approach are explained in the
+            paper. However, it was not our goal to find a general model for all queries
+            but a simple and fast one for TPC-H-like queries. We show that this runs
+            well on a multi-core CPU and on a GPU. Still, in contrast to GPUDB the
+            transfer takes significantly longer than the execution. For most queries
+            the exection times are below 20 ms, while it takes around a 100 ms to transfer
+            the input data and necessary indices. Simlar to Ocelot we cache the data
+            on the GPU and ignore the transfer times (of the inputs data) for our measurements.
+            Still, Q1 takes longer to execute on the GPU than on the CPU. But we were
+            able to show that the OpenCL implementation performs well on the CPU in
+            most cases compared with the native implementation, which uses <a href="https://www.threadingbuildingblocks.org/">Intel's TBB</a> for
+            parallel execution.</p>
+        <p>Therefore, I support the conclusion of Heimel et al. If CPUs with integrated
+            GPUs show up in machines used for DBMS (most of Intel's Xeons still do
+            not have an integrated GPU) we can benfit from using OpenCL at the price
+            of a little worse performance. The alternatives are not to use the available
+            hardware or to provide and maintain two (or more) implementations, one for
+            each device/architecture. However, in some cases the vendors will do that for perfect performance. In Vectorwise something similar is already done for the CPU with different compilers and parameters for each operator as described in <a href="http://oai.cwi.nl/oai/asset/21351/21351B.pdf" class="link-ref">Micro Adaptivity in Vectorwise</a>.</p>
+        
+<h3>Additional information about our paper</h3>
 
-    <p></p>
-    
-<h3>Conclusion</h3>
+        <p>In a first version of our paper we had Q4 as complete example, but because
+            of limited space we had to leave it out for ADBIS. Here it is:</p>
+<pre><code>
+/*
+select o_orderpriority, count(*) from orders
+where o_orderdate &gt;= '1993-07-01' 
+and o_orderdate &lt; '1993-10-01'
+and exists (select * from lineitem 
+ where l_orderkey = o_orderkey 
+ and l_commitdate &lt; l_receiptdate)
+group by o_orderpriority
+order by o_orderpriority
+*/
 
-    <p></p>
+__kernel void global_compute (
+    __global unsigned short* p_c1,
+    ... //columns/indexes as parameters
+    __global long* interim_result,
+    int bs//num of tuples processed by 1 thread
+    ) {
+  __local long l_thread_data[RESULT_SIZE];
+  long p_thread_data[RESULT_SIZE];
+  ... //init memory with 0
+  uint start = (get_group_id(0) * WG_SIZE * bs)
+               + get_local_id(0);
+  uint end = start + WG_SIZE * bs;
+/* local compute */
+  for (unsigned i0=start; i0&lt;end; i0+=WG_SIZE)) {
+    unsigned short c1 = p_c1[i0];
+    if (!(c1 &gt;= 8582)) continue;
+    if (!(c1 &lt; 8674))  continue;
+    unsigned c0 = p_c0[i0];
+    unsigned ind1e = ind1[i0 + 1];
+    for (unsigned i1=ind1[i0]; i1&lt;ind1e; ++i1) {
+      if (!(p_c2[i1] &lt; p_c3[i1])) continue;
+      ++p_thread_data[c0];
+      break;
+    }
+  }
+/* local accumulate */
+  for (int j=0; j &lt; RESULT_SIZE; ++j) {
+    local_sum(&l_thread_data[j],p_thread_data[j]);
+  }
+  ... //copy l_thread_data to interim_result
+}
+</code></pre>
+
+        <p>Parameters for the kernel are pointers to the columns in global memory,
+            a pointer to the result memory and the size of the block that is processed
+            by each thread. The query parameters, such as the date and the number of
+            expected results, are compiled into the code at runtime. We use <i>WG_SIZE</i> as
+            abbreviation for <i>get_local_size(0)</i>, which is the number of threads
+            per workgroup. Before starting the local Compute phase private (per thread)
+            and local (per workgroup) memory segments are initialized and every thread
+            calculates its starting position.
+            <br />The actual Compute phase is represented as a for-loop. Inside the loop
+            the tuples are filtered according to the <i>where</i> clause, which is a
+            date range in Q4. The inner loop after the filter instructions represents
+            the join operation between <i>lineitem</i> and <i>orders</i>. In this loop
+            we iterate over the join index and filter tuples according to the inner <i>select</i>'s <i>where</i> clause.
+            As soon as one tuple is found, the private counter for this <i>orderpriority</i> is
+            incremented and the rest of the inner loop is skipped. At the end of the
+            Compute phase every thread of a workgroup holds the result for the tuples
+            it processed in private memory.
+            <br />In the local Accumulate phase these results are added to the interim result
+            of every workgroup. A <i>sum</i> function optimized for the GPU is executed
+            on every line of the result to sum up the counted tuples of the Compute
+            phase.
+            <br />The global Accumulate phase (not in the code) copies the local results
+            of all workgroups to the shared memory of one workgroup and executes the
+            same sum function like the local Accumulate.</p>
+<p>The full code for our experiments (with OpenCL) can be found on <a href="#" class="link-ref">github</a></p>
 </article>
