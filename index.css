@@ -9,3 +9,12 @@ nav a {text-decoration: none;}
 .comments { width: 600px; margin: 10px; margin-left: 30px;}
 span.date {float: right;}
 h3 a {color:black;text-decoration: none;}
+.references ol {
+    counter-reset: item;
+    margin-left: 0;
+    padding-left: 0;
+}
+.references li {
+    display: block;
+}
+.references li:before { content: "[" counter(item) "] "; counter-increment: item; }

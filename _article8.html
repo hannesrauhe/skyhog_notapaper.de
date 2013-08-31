@@ -23,7 +23,7 @@
             data must be in pinned memory for fast transfer, but to my surprise they
             conclude that a GPU is always faster than the CPU despite the data transfer
             (with Speed-Ups from 2x to 7x).</p>
-        <p>The authors of the second paper <a href="http://www.vldb.org/pvldb/vol6/p709-heimel.pdf" class="link-ref">Hardware-Oblivious Parallelism for In-Memory Column-Stores</a> do
+        <p>The authors of the second paper <a href="http://www.vldb.org/pvldb/vol6/p709-heimel.pdf" class="link-ref" alt='Max Heimel, Michael Saecker, Holger Pirk, Stefan Manegold, Volker Markl, "Hardware-Oblivious Parallelism for In-Memory Column Stores"'>Hardware-Oblivious Parallelism for In-Memory Column-Stores</a> do
             not intent to show that GPUs are better query executors, but argue that
             a DBMS must be able to use the new architectures which are integrated into
             the CPU. AMD's Accelerated Processing Units and the integrated GPUs in
@@ -139,4 +139,6 @@ __kernel void global_compute (
             of all workgroups to the shared memory of one workgroup and executes the
             same sum function like the local Accumulate.</p>
 <p>The full code for our experiments (with OpenCL) can be found on <a href="#" class="link-ref">github</a></p>
+<div class="references"><div class="__skyhog_references"></div>
+</div>
 </article>
